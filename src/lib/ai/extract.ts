@@ -1,14 +1,8 @@
 import { z } from "zod";
-import { createAnthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
+import { getModelForTask, getParamsForTask } from "./client";
 import type { ScenarioId } from "@/types";
 
-const anthropic = createAnthropic({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: `${process.env.GEMINI_BASE_URL}/v1`,
-});
-
-// 定义第一阶段抽取的结构化数据 Schema
 export const recruitmentSchema = z.object({
   jobTitle: z.string().describe("岗位名称，例如：住家保姆、钟点工、月嫂等"),
   salary: z.string().describe("薪资待遇，例如：6000-8000/月，200/天，面议等"),
@@ -23,9 +17,13 @@ export const recruitmentSchema = z.object({
 export type RecruitmentData = z.infer<typeof recruitmentSchema>;
 
 export async function extractRecruitmentInfo(requirement: string, scenario: ScenarioId) {
+  const params = getParamsForTask("extract");
+
   const result = await generateObject({
-    model: anthropic("claude-sonnet-4-6-thinking"),
+    model: getModelForTask("extract"),
     schema: recruitmentSchema,
+    temperature: params.temperature,
+    maxOutputTokens: params.maxOutputTokens,
     prompt: `你是一个专业的家政招募需求分析师。请从用户的口语化输入中，提取出标准的结构化招募要素。
 如果用户没有提供某项信息，请根据场景（${scenario}）进行合理的推断补充，或者留空。
 

@@ -18,12 +18,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <TooltipProvider>
           <div className="relative flex h-screen overflow-hidden">
             <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-              <div className="absolute -top-32 right-1/3 h-[500px] w-[500px] rounded-full bg-red-200/25 blur-[100px]" />
-              <div className="absolute bottom-0 right-1/4 h-[400px] w-[400px] rounded-full bg-amber-100/25 blur-[80px]" />
-              <div className="absolute bottom-1/3 left-1/4 h-[350px] w-[350px] rounded-full bg-blue-100/20 blur-[90px]" />
+              <div className="absolute -top-32 right-1/3 h-[500px] w-[500px] rounded-full bg-red-200/25 blur-[100px] animate-float" />
+              <div className="absolute bottom-0 right-1/4 h-[400px] w-[400px] rounded-full bg-amber-100/25 blur-[80px] animate-float" style={{ animationDelay: "1s" }} />
+              <div className="absolute bottom-1/3 left-1/4 h-[350px] w-[350px] rounded-full bg-blue-100/20 blur-[90px] animate-float" style={{ animationDelay: "2s" }} />
             </div>
             <Sidebar />
-            <main className="flex-1 overflow-y-auto"><div className="mx-auto p-8">{children}</div></main>
+            <main className="flex-1 overflow-y-auto">
+              <div className="mx-auto p-8 animate-fade-in-up">{children}</div>
+            </main>
           </div>
         </TooltipProvider>
       </body>

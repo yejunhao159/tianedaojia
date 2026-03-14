@@ -1,85 +1,330 @@
-const API_KEY = process.env.GEMINI_API_KEY!;
-const BASE_URL = process.env.GEMINI_BASE_URL || "https://hk-api.gptbest.vip";
-const MODEL = "gemini-3.1-flash-image-preview";
+import { GoogleGenAI } from "@google/genai";
 
-const ASPECT_HINT: Record<string, string> = {
-  "1:1": "正方形构图",
-  "3:4": "竖版3:4构图",
-  "4:3": "横版4:3构图",
-  "9:16": "手机竖屏9:16构图",
-  "16:9": "横版宽屏16:9构图",
+const API_KEY = process.env.GEMINI_API_KEY!;
+const BASE_URL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
+
+let _genai: GoogleGenAI | null = null;
+
+function getGenAI() {
+  if (!_genai) {
+    _genai = new GoogleGenAI({ apiKey: API_KEY, httpOptions: { baseUrl: BASE_URL } });
+  }
+  return _genai;
+}
+
+// ==================== 模型配置 ====================
+
+export type ImageModelId =
+  | "gemini-2.5-flash-image"
+  | "gemini-3.1-flash-image-preview"
+  | "gemini-3-pro-image-preview";
+
+export interface ImageModelConfig {
+  id: ImageModelId;
+  name: string;
+  tier: "standard" | "enhanced" | "pro";
+  maxInputImages: number;
+  maxResolution: ImageSize;
+  supportsThinking: boolean;
+}
+
+export const IMAGE_MODELS: Record<ImageModelId, ImageModelConfig> = {
+  "gemini-2.5-flash-image": {
+    id: "gemini-2.5-flash-image",
+    name: "Gemini 2.5 Flash Image",
+    tier: "standard",
+    maxInputImages: 5,
+    maxResolution: "1K",
+    supportsThinking: false,
+  },
+  "gemini-3.1-flash-image-preview": {
+    id: "gemini-3.1-flash-image-preview",
+    name: "Gemini 3.1 Flash Image",
+    tier: "enhanced",
+    maxInputImages: 10,
+    maxResolution: "2K",
+    supportsThinking: false,
+  },
+  "gemini-3-pro-image-preview": {
+    id: "gemini-3-pro-image-preview",
+    name: "Gemini 3 Pro Image",
+    tier: "pro",
+    maxInputImages: 14,
+    maxResolution: "4K",
+    supportsThinking: true,
+  },
 };
+
+// ==================== 分辨率管控 ====================
+
+export type ImageSize = "1K" | "2K" | "4K";
+
+const RESOLUTION_ORDER: ImageSize[] = ["1K", "2K", "4K"];
+
+function clampResolution(requested: ImageSize, model: ImageModelId): ImageSize {
+  const max = IMAGE_MODELS[model]?.maxResolution ?? "1K";
+  const reqIdx = RESOLUTION_ORDER.indexOf(requested);
+  const maxIdx = RESOLUTION_ORDER.indexOf(max);
+  if (reqIdx < 0) return max;
+  return RESOLUTION_ORDER[Math.min(reqIdx, maxIdx)];
+}
+
+// ==================== 系统指令模板 ====================
+
+export type ImageTemplateId =
+  | "default"
+  | "recruit_warm"
+  | "recruit_professional"
+  | "socialMedia"
+  | "lifestyle"
+  | "productWhiteBG"
+  | "keepFace"
+  | "highQuality"
+  | "replication";
+
+export interface ImageTemplate {
+  id: ImageTemplateId;
+  name: string;
+  description: string;
+  systemInstruction: string;
+}
+
+export const IMAGE_TEMPLATES: Record<ImageTemplateId, ImageTemplate> = {
+  default: {
+    id: "default",
+    name: "默认通用",
+    description: "通用图像生成，适合大多数场景",
+    systemInstruction: `You are an expert image-generation engine. You must ALWAYS produce an image.
+Interpret all user input as visual directives. Describe scenes narratively — never reduce prompts to keyword lists.
+If a prompt lacks details, creatively fill in: subject appearance, environment, lighting (type + direction), camera angle, and overall mood.
+Quality standards for ALL generated images:
+- Professional lighting appropriate to the scene
+- Sharp focus on the primary subject with appropriate depth of field
+- Clean, artifact-free output with no distortion
+- Coherent color palette that matches the mood and context
+- No watermarks, text overlays, or UI elements unless explicitly requested`,
+  },
+
+  recruit_warm: {
+    id: "recruit_warm",
+    name: "家政招聘·温馨风",
+    description: "温馨暖色调家政招聘配图，传递家的温暖和信任感",
+    systemInstruction: `你是一位专注于家政服务行业的视觉设计师。你必须始终生成图片。
+设计原则：
+- 画面温馨明亮，以暖色调为主（柔和的橙色、米白色、浅木色）
+- 展示真实的中国家庭生活场景：整洁的客厅、温馨的厨房、明亮的卧室
+- 人物形象亲切专业：穿着整洁的工作服或家居服，面带微笑
+- 构图简洁干净，主体突出，适合作为招聘海报或社交媒体配图
+- 不添加任何文字水印，画面纯净
+- 光线柔和自然，如同阳光透过窗帘的感觉
+- 传递专业、可信赖、有温度的品牌感`,
+  },
+
+  recruit_professional: {
+    id: "recruit_professional",
+    name: "家政招聘·专业风",
+    description: "专业简约风格家政招聘配图，适合正式招聘平台",
+    systemInstruction: `你是一位商业摄影师，专门为家政服务平台制作专业级招聘配图。
+设计要求：
+- 画面简洁大气，使用现代简约设计风格
+- 配色专业：以白色、浅灰色为底，搭配品牌红色（#E53E3E）点缀
+- 展示专业化的家政服务场景：有序的工作环境、专业的工具设备
+- 人物着装统一规范，体现专业培训和管理体系
+- 适当留白，为后期添加文字信息预留空间
+- 拍摄角度专业：三分法构图，适当的景深
+- 画质清晰锐利，适合在58同城等招聘平台使用`,
+  },
+
+  socialMedia: {
+    id: "socialMedia",
+    name: "社交媒体素材",
+    description: "适合抖音/小红书等平台的吸睛配图",
+    systemInstruction: `You are a social media content creator specializing in scroll-stopping visuals.
+Requirements:
+- Bold, high-contrast compositions that grab attention instantly in a feed
+- Vibrant but not oversaturated colors — visually striking yet tasteful
+- Strong visual hierarchy with a single clear focal point
+- Modern, trendy aesthetic aligned with current social media visual trends
+- Clean enough to overlay text or brand elements later if needed
+- Optimized for mobile viewing: important details must not be too small
+- Composition should work well in both square (1:1) and vertical (9:16) crops
+- The image should evoke emotion or curiosity — make people stop scrolling`,
+  },
+
+  lifestyle: {
+    id: "lifestyle",
+    name: "生活方式场景",
+    description: "产品或服务融入真实生活场景",
+    systemInstruction: `You are a lifestyle photographer creating aspirational product-in-context images.
+Requirements:
+- Place the subject naturally within a realistic lifestyle environment
+- The scene should tell a story about how the service is experienced
+- Natural, warm lighting that feels authentic and inviting
+- Shallow depth of field to maintain focus while showing environment
+- Color palette should feel cohesive and visually appealing
+- Human interaction should look natural and unposed
+- Environment details should reinforce the brand positioning
+- Output should feel like an editorial lifestyle photograph`,
+  },
+
+  productWhiteBG: {
+    id: "productWhiteBG",
+    name: "产品白底图",
+    description: "纯白底产品图，适合电商主图",
+    systemInstruction: `You are a professional product photographer. Generate clean e-commerce product images.
+CRITICAL requirements:
+- Pure white background (#FFFFFF), no gradients, no shadows unless soft drop shadow is requested
+- Product centered in frame, occupying 70-85% of the image area
+- Three-point softbox lighting: soft, diffused highlights, no harsh shadows
+- Camera angle: slightly elevated 45-degree shot to showcase dimension
+- Sharp focus throughout the entire product with maximum detail clarity
+- True-to-life colors with no artistic color grading
+- Surface textures clearly visible
+- No props, decorations, or context unless explicitly requested`,
+  },
+
+  keepFace: {
+    id: "keepFace",
+    name: "人脸保持",
+    description: "编辑图片时保持人脸特征不变",
+    systemInstruction: `You are an expert portrait and fashion editor. You must ALWAYS produce an image while preserving the person's complete identity.
+ABSOLUTE RULES:
+- The output face must be IDENTICAL to the input: same bone structure, skin tone, eye shape, nose, lips, expression, hairstyle, hair color
+- Do NOT alter age, body proportions, skin texture, or add/remove makeup unless explicitly asked
+- Do NOT change facial expression or head angle unless explicitly instructed
+- Only modify clothing, pose, and background as instructed
+- Lighting on the face must feel natural and consistent with the new scene
+STRICT PROHIBITIONS:
+- Do NOT alter skin tone, facial structure, or eye shape
+- Do NOT age or de-age the person
+- Do NOT change body type or proportions`,
+  },
+
+  highQuality: {
+    id: "highQuality",
+    name: "商业交付级",
+    description: "印刷级高画质输出，适合广告和海报",
+    systemInstruction: `You are a world-class commercial photographer producing print-ready imagery.
+Quality standards:
+- Magazine-grade composition with intentional visual balance and golden ratio awareness
+- Rich micro-details and textures visible even at large print sizes
+- Professional color science: accurate whites, deep blacks, full tonal range
+- Lighting that sculpts the subject with dimension and depth
+- Zero artifacts, noise, or AI-typical anomalies
+- Every element in the frame serves a purpose — no visual clutter
+Prioritize visual excellence and commercial usability above all else.`,
+  },
+
+  replication: {
+    id: "replication",
+    name: "图片复刻",
+    description: "精准还原参考图的构图、色彩、风格",
+    systemInstruction: `You are an expert image replication specialist. Your task is to faithfully reproduce the input reference image as closely as possible.
+ABSOLUTE RULES:
+- Reproduce the EXACT composition: subject placement, framing, camera angle
+- Match the color palette precisely: hues, saturation, brightness
+- Preserve the lighting setup: direction, intensity, quality
+- Maintain the same art style and visual aesthetic
+- Keep proportions, scale relationships, and perspective identical
+- Reproduce textures, patterns, and material appearances faithfully
+- Match the mood, atmosphere, and emotional tone of the original
+QUALITY STANDARDS:
+- The output should be visually indistinguishable from the reference at first glance
+- No added watermarks, artifacts, or elements not present in the original`,
+  },
+};
+
+// ==================== 核心生成函数 ====================
 
 export interface ImageResult {
   success: boolean;
+  imageBase64?: string;
+  mimeType?: string;
   imageUrl?: string;
   text?: string;
   error?: string;
+  model?: ImageModelId;
+  resolution?: ImageSize;
+  template?: ImageTemplateId;
 }
 
-export async function generateRecruitImage(opts: {
+const VALID_ASPECTS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"] as const;
+type AspectRatio = typeof VALID_ASPECTS[number];
+
+function normalizeAspect(aspect: string): AspectRatio {
+  if (VALID_ASPECTS.includes(aspect as AspectRatio)) return aspect as AspectRatio;
+  return "1:1";
+}
+
+export interface GenerateImageOptions {
   prompt: string;
-  aspect: string;
-}): Promise<ImageResult> {
-  const hint = ASPECT_HINT[opts.aspect] || "正方形构图";
-  const fullPrompt = `生成一张家政服务招聘配图，${hint}，温馨专业风格，明亮暖色调，中国家庭服务场景。主题：${opts.prompt}。画面干净，不要文字水印。`;
+  aspect?: string;
+  model?: ImageModelId;
+  resolution?: ImageSize;
+  template?: ImageTemplateId;
+  customSystemInstruction?: string;
+}
+
+export async function generateRecruitImage(opts: GenerateImageOptions): Promise<ImageResult> {
+  const model = opts.model ?? "gemini-3.1-flash-image-preview";
+  const resolution = clampResolution(opts.resolution ?? "1K", model);
+  const aspect = normalizeAspect(opts.aspect ?? "1:1");
+
+  const templateId = opts.template ?? "recruit_warm";
+  const tpl = IMAGE_TEMPLATES[templateId];
+  const systemInstruction = opts.customSystemInstruction ?? tpl?.systemInstruction ?? IMAGE_TEMPLATES.default.systemInstruction;
 
   try {
-    const res = await fetch(`${BASE_URL}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`,
+    const ai = getGenAI();
+    const response = await ai.models.generateContent({
+      model,
+      contents: opts.prompt,
+      config: {
+        responseModalities: ["TEXT", "IMAGE"],
+        systemInstruction,
+        imageConfig: {
+          aspectRatio: aspect,
+          imageSize: resolution,
+        },
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: "user", content: fullPrompt }],
-      }),
-      signal: AbortSignal.timeout(180000),
     });
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      return { success: false, error: `API ${res.status}: ${errBody.slice(0, 200)}` };
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (!parts?.length) {
+      return { success: false, error: "Empty response from model" };
     }
 
-    const json = await res.json();
-    const content = json.choices?.[0]?.message?.content;
+    let text: string | undefined;
+    let imageBase64: string | undefined;
+    let mimeType: string | undefined;
 
-    if (!content) {
-      return { success: false, error: "Empty response" };
-    }
-
-    // Response is markdown: ![image](https://...png)
-    if (typeof content === "string") {
-      const mdMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
-      if (mdMatch) {
-        return { success: true, imageUrl: mdMatch[1], text: content };
-      }
-      const urlMatch = content.match(/https?:\/\/[^\s"'<>]+\.(png|jpg|jpeg|webp|gif)/i);
-      if (urlMatch) {
-        return { success: true, imageUrl: urlMatch[0], text: content };
-      }
-      return { success: false, error: "No image URL in response", text: content };
-    }
-
-    // Array content format
-    if (Array.isArray(content)) {
-      for (const part of content) {
-        if (part.type === "image_url" && part.image_url?.url) {
-          return { success: true, imageUrl: part.image_url.url };
-        }
-        if (part.type === "text" && typeof part.text === "string") {
-          const mdMatch = part.text.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
-          if (mdMatch) return { success: true, imageUrl: mdMatch[1], text: part.text };
-        }
+    for (const part of parts) {
+      if (part.thought) continue;
+      if (part.text) {
+        text = part.text;
+      } else if (part.inlineData) {
+        imageBase64 = part.inlineData.data;
+        mimeType = part.inlineData.mimeType;
       }
     }
 
-    return { success: false, error: "Unexpected format" };
+    if (imageBase64) {
+      return {
+        success: true,
+        imageBase64,
+        mimeType: mimeType || "image/png",
+        imageUrl: `data:${mimeType || "image/png"};base64,${imageBase64}`,
+        text,
+        model,
+        resolution,
+        template: templateId,
+      };
+    }
+
+    return { success: false, error: "No image in response", text };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("Image generation failed:", msg);
+    console.error("[ImageService] Generation failed:", msg);
     return { success: false, error: msg };
   }
 }

@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { getAIClient, DEFAULT_MODEL } from "./client";
+import { getModelForTask, getParamsForTask } from "./client";
 import { buildSystemPrompt, buildUserPrompt } from "./prompts/generate";
 import type { ChannelId, ScenarioId, ToneId } from "@/types";
 
@@ -9,10 +9,12 @@ export function streamGenerateContent(opts: {
   scenario: ScenarioId;
   tone: ToneId;
 }) {
+  const params = getParamsForTask("generate");
   return streamText({
-    model: getAIClient()(DEFAULT_MODEL),
+    model: getModelForTask("generate"),
     system: buildSystemPrompt(opts.channel, opts.tone, opts.scenario),
     prompt: buildUserPrompt(opts.requirement),
-    maxOutputTokens: 2000,
+    temperature: params.temperature,
+    maxOutputTokens: params.maxOutputTokens,
   });
 }
