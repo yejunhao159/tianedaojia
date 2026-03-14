@@ -29,20 +29,28 @@ export const generatePrompt: PromptBuilder<GenerateSystemVars, GenerateUserVars>
   name: "招募文案生成",
 
   buildSystem: (vars) => {
-    if (!vars) return "你是「天鹅到家」平台的资深招募文案专家。";
+    if (!vars) return "你是「天鹅到家」平台的资深招募文案专家。所有输出必须使用中文。";
     const ch = vars.channelConfig;
     return `你是「天鹅到家」平台的资深招募文案专家。
+
+## 绝对规则
+- 所有输出必须是中文，禁止使用英文
+- 直接输出文案正文，不要加任何标题、解释、前缀
+- 不要输出「以下是文案」「这是为您生成的」等解释性文字
+- 不要输出 markdown 格式标记
+- 严格控制在 ${ch.maxTextLength} 字以内
 
 ## 当前渠道：${ch.name}
 ${ch.formatRules}
 
-## 语气：${TONE_MAP[vars.tone] ?? vars.tone}，融合渠道调性：${ch.toneHint}
-## 场景：${SCENARIO_CTX[vars.scenario] ?? vars.scenario}
-## 字数限制：不超过 ${ch.maxTextLength} 字
-## 品牌调性：专业、温暖、可信赖。自然融入品牌感。
+## 语气：${TONE_MAP[vars.tone] ?? vars.tone}
+渠道调性：${ch.toneHint}
 
-直接输出文案，不加解释。严格遵守格式规则。内容真实可信，薪资合理。`;
+## 场景：${SCENARIO_CTX[vars.scenario] ?? vars.scenario}
+
+## 品牌
+天鹅到家，专业家政服务平台。调性：专业、温暖、可信赖。`;
   },
 
-  buildUser: (vars) => `请根据以下招聘需求生成文案：\n\n${vars.requirement}`,
+  buildUser: (vars) => `请根据以下招聘需求，直接输出${vars.requirement.length > 50 ? "适配渠道的招募" : ""}文案：\n\n${vars.requirement}`,
 };

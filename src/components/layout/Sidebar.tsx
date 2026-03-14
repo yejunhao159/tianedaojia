@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutGrid, PenLine, Layers3, Target, Bot,
-  Database, Send, Settings, Bird,
+  LayoutGrid, PenLine, Layers3, Target,
+  Send, Settings, Bird,
   PanelLeftClose, PanelLeftOpen, History,
 } from "lucide-react";
 import { useState } from "react";
@@ -16,9 +16,6 @@ const NAV = [
   { href: "/generate", icon: PenLine, label: "文案生成", prefix: true },
   { href: "/parse", icon: Layers3, label: "信息结构化" },
   { href: "/match", icon: Target, label: "智能匹配" },
-  { label: "AI 能力", type: "section" as const },
-  { href: "/agents", icon: Bot, label: "智能体" },
-  { href: "/data", icon: Database, label: "数据管理" },
   { label: "运营工具", type: "section" as const },
   { href: "/publish", icon: Send, label: "发布管理" },
   { href: "/history", icon: History, label: "历史记录" },
@@ -29,7 +26,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <aside className={cn("glass flex h-screen shrink-0 flex-col border-r border-sidebar-border transition-all duration-300", collapsed ? "w-[68px]" : "w-[240px]")}>
+    <aside className={cn("glass flex h-screen shrink-0 flex-col border-r border-sidebar-border transition-all duration-300", collapsed ? "w-[68px]" : "w-[220px]")}>
       <div className={cn("flex items-center gap-3 py-5", collapsed ? "justify-center px-3" : "px-5")}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
           <Bird size={20} strokeWidth={1.8} />
@@ -37,7 +34,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="min-w-0">
             <h1 className="text-[14px] font-bold tracking-tight">天鹅到家</h1>
-            <p className="text-[10px] font-medium text-muted-foreground">AI 智能招募平台</p>
+            <p className="text-[10px] font-medium text-muted-foreground">AI 智能招募</p>
           </div>
         )}
       </div>
