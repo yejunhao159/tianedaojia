@@ -1,6 +1,8 @@
 import { getImageClient } from "./client";
-import { clampResolution, normalizeAspect, DEFAULT_IMAGE_MODEL, type ImageModelId, type ImageSize } from "./models";
+import { IMAGE_MODEL, clampResolution, normalizeAspect, type ImageSize, type ImageThinkingLevel } from "./models";
 import { IMAGE_TEMPLATES, type ImageTemplateId } from "./templates";
+
+// ==================== 单次生成 ====================
 
 export interface ImageResult {
   success: boolean;
@@ -9,7 +11,6 @@ export interface ImageResult {
   imageUrl?: string;
   text?: string;
   error?: string;
-  model?: ImageModelId;
   resolution?: ImageSize;
   template?: ImageTemplateId;
 }
@@ -17,16 +18,16 @@ export interface ImageResult {
 export interface GenerateImageOptions {
   prompt: string;
   aspect?: string;
-  model?: ImageModelId;
   resolution?: ImageSize;
   template?: ImageTemplateId;
   customSystemInstruction?: string;
+  thinkingLevel?: ImageThinkingLevel;
 }
 
 export async function generateImage(opts: GenerateImageOptions): Promise<ImageResult> {
-  const model = opts.model ?? DEFAULT_IMAGE_MODEL;
-  const resolution = clampResolution(opts.resolution ?? "1K", model);
+  const resolution = clampResolution(opts.resolution ?? "1K");
   const aspect = normalizeAspect(opts.aspect ?? "1:1");
+  const thinkingLevel = opts.thinkingLevel ?? "minimal";
 
   const templateId = opts.template ?? "recruit_warm";
   const tpl = IMAGE_TEMPLATES[templateId];
@@ -35,50 +36,208 @@ export async function generateImage(opts: GenerateImageOptions): Promise<ImageRe
   try {
     const ai = getImageClient();
     const response = await ai.models.generateContent({
-      model,
+      model: IMAGE_MODEL.id,
       contents: opts.prompt,
       config: {
         responseModalities: ["TEXT", "IMAGE"],
         systemInstruction,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinkingConfig: { thinkingLevel: thinkingLevel as any },
         imageConfig: { aspectRatio: aspect, imageSize: resolution },
       },
     });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (!parts?.length) {
-      return { success: false, error: "Empty response from model" };
-    }
-
-    let text: string | undefined;
-    let imageBase64: string | undefined;
-    let mimeType: string | undefined;
-
-    for (const part of parts) {
-      if (part.thought) continue;
-      if (part.text) text = part.text;
-      else if (part.inlineData) {
-        imageBase64 = part.inlineData.data;
-        mimeType = part.inlineData.mimeType;
-      }
-    }
-
-    if (imageBase64) {
-      return {
-        success: true,
-        imageBase64,
-        mimeType: mimeType || "image/png",
-        imageUrl: `data:${mimeType || "image/png"};base64,${imageBase64}`,
-        text,
-        model,
-        resolution,
-        template: templateId,
-      };
-    }
-
-    return { success: false, error: "No image in response", text };
+    return parseImageResponse(response, { resolution, template: templateId });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[ImageService] Generation failed:", msg);
     return { success: false, error: msg };
   }
+}
+
+// ==================== 多轮对话编辑 ====================
+
+export interface ChatSession {
+  id: string;
+  history: ChatMessage[];
+  config: ChatConfig;
+  createdAt: number;
+  lastActiveAt: number;
+}
+
+interface ChatMessage {
+  role: "user" | "model";
+  parts: ChatPart[];
+}
+
+interface ChatPart {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+  thought?: boolean;
+  thoughtSignature?: string;
+}
+
+interface ChatConfig {
+  aspect: string;
+  resolution: ImageSize;
+  systemInstruction: string;
+  thinkingLevel: ImageThinkingLevel;
+}
+
+const sessions = new Map<string, ChatSession>();
+const SESSION_TTL = 30 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, s] of sessions) {
+    if (now - s.lastActiveAt > SESSION_TTL) sessions.delete(id);
+  }
+}, 5 * 60 * 1000);
+
+export interface CreateChatOptions {
+  aspect?: string;
+  resolution?: ImageSize;
+  template?: ImageTemplateId;
+  customSystemInstruction?: string;
+  thinkingLevel?: ImageThinkingLevel;
+}
+
+export function createChat(opts: CreateChatOptions = {}): ChatSession {
+  const id = crypto.randomUUID();
+  const templateId = opts.template ?? "default";
+  const tpl = IMAGE_TEMPLATES[templateId];
+
+  const session: ChatSession = {
+    id,
+    history: [],
+    config: {
+      aspect: normalizeAspect(opts.aspect ?? "1:1"),
+      resolution: clampResolution(opts.resolution ?? "1K"),
+      systemInstruction: opts.customSystemInstruction ?? tpl?.systemInstruction ?? IMAGE_TEMPLATES.default.systemInstruction,
+      thinkingLevel: opts.thinkingLevel ?? "minimal",
+    },
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  };
+
+  sessions.set(id, session);
+  return session;
+}
+
+export function getChat(id: string): ChatSession | null {
+  const s = sessions.get(id);
+  if (s) s.lastActiveAt = Date.now();
+  return s ?? null;
+}
+
+export function deleteChat(id: string): boolean {
+  return sessions.delete(id);
+}
+
+export interface ChatSendOptions {
+  sessionId: string;
+  prompt: string;
+  inputImageBase64?: string;
+  inputImageMimeType?: string;
+}
+
+export async function sendChatMessage(opts: ChatSendOptions): Promise<ImageResult> {
+  const session = getChat(opts.sessionId);
+  if (!session) return { success: false, error: "会话不存在或已过期" };
+
+  const userParts: ChatPart[] = [];
+  if (opts.inputImageBase64) {
+    userParts.push({
+      inlineData: {
+        mimeType: opts.inputImageMimeType ?? "image/png",
+        data: opts.inputImageBase64,
+      },
+    });
+  }
+  userParts.push({ text: opts.prompt });
+
+  session.history.push({ role: "user", parts: userParts });
+
+  try {
+    const ai = getImageClient();
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL.id,
+      contents: session.history,
+      config: {
+        responseModalities: ["TEXT", "IMAGE"],
+        systemInstruction: session.config.systemInstruction,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinkingConfig: { thinkingLevel: session.config.thinkingLevel as any },
+        imageConfig: {
+          aspectRatio: session.config.aspect,
+          imageSize: session.config.resolution,
+        },
+      },
+    });
+
+    const rawParts = response.candidates?.[0]?.content?.parts ?? [];
+
+    const modelParts: ChatPart[] = [];
+    for (const part of rawParts) {
+      const saved: ChatPart = {};
+      if (part.text) saved.text = part.text;
+      if (part.inlineData) {
+        saved.inlineData = {
+          mimeType: part.inlineData.mimeType ?? "image/png",
+          data: part.inlineData.data ?? "",
+        };
+      }
+      if (part.thoughtSignature) saved.thoughtSignature = part.thoughtSignature;
+      if (part.thought) saved.thought = part.thought;
+      if (Object.keys(saved).length > 0) modelParts.push(saved);
+    }
+    session.history.push({ role: "model", parts: modelParts });
+
+    return parseImageResponse(response, {
+      resolution: session.config.resolution,
+    });
+  } catch (e: unknown) {
+    session.history.pop();
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    console.error("[ImageChat] Message failed:", msg);
+    return { success: false, error: msg };
+  }
+}
+
+// ==================== 响应解析 ====================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseImageResponse(
+  response: any,
+  meta: { resolution?: ImageSize; template?: ImageTemplateId },
+): ImageResult {
+  const parts = response?.candidates?.[0]?.content?.parts;
+  if (!parts?.length) return { success: false, error: "Empty response" };
+
+  let text: string | undefined;
+  let imageBase64: string | undefined;
+  let mimeType: string | undefined;
+
+  for (const part of parts) {
+    if (part.thought) continue;
+    if (part.text) text = part.text;
+    else if (part.inlineData) {
+      imageBase64 = part.inlineData.data;
+      mimeType = part.inlineData.mimeType;
+    }
+  }
+
+  if (imageBase64) {
+    return {
+      success: true,
+      imageBase64,
+      mimeType: mimeType || "image/png",
+      imageUrl: `data:${mimeType || "image/png"};base64,${imageBase64}`,
+      text,
+      resolution: meta.resolution,
+      template: meta.template,
+    };
+  }
+
+  return { success: false, error: "No image in response", text };
 }

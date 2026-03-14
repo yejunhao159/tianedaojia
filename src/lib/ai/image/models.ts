@@ -1,62 +1,40 @@
-export type ImageModelId =
-  | "gemini-2.5-flash-image"
-  | "gemini-3.1-flash-image-preview"
-  | "gemini-3-pro-image-preview";
+export type ImageModelId = "gemini-3.1-flash-image-preview";
 
-export type ImageSize = "1K" | "2K" | "4K";
+export type ImageSize = "512" | "1K" | "2K";
+export type ImageThinkingLevel = "minimal" | "high";
 
 export interface ImageModelConfig {
   id: ImageModelId;
   name: string;
-  tier: "standard" | "enhanced" | "pro";
   maxInputImages: number;
   maxResolution: ImageSize;
-  supportsThinking: boolean;
+  supportedAspects: string[];
 }
 
-export const IMAGE_MODELS: Record<ImageModelId, ImageModelConfig> = {
-  "gemini-2.5-flash-image": {
-    id: "gemini-2.5-flash-image",
-    name: "Gemini 2.5 Flash Image",
-    tier: "standard",
-    maxInputImages: 5,
-    maxResolution: "1K",
-    supportsThinking: false,
-  },
-  "gemini-3.1-flash-image-preview": {
-    id: "gemini-3.1-flash-image-preview",
-    name: "Gemini 3.1 Flash Image",
-    tier: "enhanced",
-    maxInputImages: 10,
-    maxResolution: "2K",
-    supportsThinking: false,
-  },
-  "gemini-3-pro-image-preview": {
-    id: "gemini-3-pro-image-preview",
-    name: "Gemini 3 Pro Image",
-    tier: "pro",
-    maxInputImages: 14,
-    maxResolution: "4K",
-    supportsThinking: true,
-  },
+export const IMAGE_MODEL: ImageModelConfig = {
+  id: "gemini-3.1-flash-image-preview",
+  name: "Gemini 3.1 Flash Image (Nano Banana 2)",
+  maxInputImages: 10,
+  maxResolution: "2K",
+  supportedAspects: [
+    "1:1", "1:4", "1:8", "2:3", "3:2", "3:4",
+    "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9",
+  ],
 };
 
-const RESOLUTION_ORDER: ImageSize[] = ["1K", "2K", "4K"];
+const VALID_ASPECTS = IMAGE_MODEL.supportedAspects;
+export type AspectRatio = string;
 
-export function clampResolution(requested: ImageSize, model: ImageModelId): ImageSize {
-  const max = IMAGE_MODELS[model]?.maxResolution ?? "1K";
-  const reqIdx = RESOLUTION_ORDER.indexOf(requested);
-  const maxIdx = RESOLUTION_ORDER.indexOf(max);
-  if (reqIdx < 0) return max;
-  return RESOLUTION_ORDER[Math.min(reqIdx, maxIdx)];
+export function normalizeAspect(aspect: string): string {
+  if (VALID_ASPECTS.includes(aspect)) return aspect;
+  return "1:1";
 }
 
-export const DEFAULT_IMAGE_MODEL: ImageModelId = "gemini-3.1-flash-image-preview";
+const RESOLUTION_ORDER: ImageSize[] = ["512", "1K", "2K"];
 
-const VALID_ASPECTS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"] as const;
-export type AspectRatio = typeof VALID_ASPECTS[number];
-
-export function normalizeAspect(aspect: string): AspectRatio {
-  if (VALID_ASPECTS.includes(aspect as AspectRatio)) return aspect as AspectRatio;
-  return "1:1";
+export function clampResolution(requested: ImageSize): ImageSize {
+  const reqIdx = RESOLUTION_ORDER.indexOf(requested);
+  const maxIdx = RESOLUTION_ORDER.indexOf(IMAGE_MODEL.maxResolution);
+  if (reqIdx < 0) return "1K";
+  return RESOLUTION_ORDER[Math.min(reqIdx, maxIdx)];
 }
