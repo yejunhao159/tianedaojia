@@ -31,6 +31,12 @@ export const CHANNELS: Record<ChannelId, ChannelConfig> = {
     toneHint: "专业正式、品牌化表达、有温度",
     formatRules: "标题不超30字，正文分段分小标题，专业但有温度体现品牌调性，结尾加引导关注/咨询的行动号召",
   },
+  wechat_group: {
+    id: "wechat_group", name: "微信群", icon: "wechat_group", maxTextLength: 200,
+    imageAspect: "1:1", imageCount: 1, previewWidth: 375,
+    toneHint: "简洁直接、信息密集、一眼看完、方便转发",
+    formatRules: "200字以内极简格式，第一行岗位+地区+薪资一行概括，中间3-5行要点用✅开头，末尾联系方式+转发引导，不啰嗦不铺垫",
+  },
 };
 
 export const CHANNEL_LIST = Object.values(CHANNELS);

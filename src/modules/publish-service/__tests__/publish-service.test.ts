@@ -10,9 +10,9 @@ describe("publish-service", () => {
 
   // ========== 渠道配置 ==========
   describe("渠道配置", () => {
-    it("应该有 5 个渠道：douyin/moments/58city/xiaohongshu/wechat", () => {
-      expect(CHANNEL_IDS).toHaveLength(5);
-      const expected: ChannelId[] = ["douyin", "moments", "58city", "xiaohongshu", "wechat"];
+    it("应该有 6 个渠道：douyin/moments/58city/xiaohongshu/wechat/wechat_group", () => {
+      expect(CHANNEL_IDS).toHaveLength(6);
+      const expected: ChannelId[] = ["douyin", "moments", "58city", "xiaohongshu", "wechat", "wechat_group"];
       for (const id of expected) {
         expect(CHANNELS[id]).toBeDefined();
         expect(CHANNELS[id].name).toBeTruthy();

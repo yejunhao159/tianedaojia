@@ -1,4 +1,4 @@
-export type ChannelId = "douyin" | "moments" | "58city" | "xiaohongshu" | "wechat";
+export type ChannelId = "douyin" | "moments" | "58city" | "xiaohongshu" | "wechat" | "wechat_group";
 export type ToneId = "formal" | "friendly" | "social";
 export type ScenarioId = "hourly" | "nanny" | "maternity" | "cleaning";
 

@@ -169,6 +169,30 @@ export const CHANNEL_TEMPLATES: Record<ChannelId, ChannelTemplate> = {
       return { valid: errors.length === 0, errors };
     },
   },
+  wechat_group: {
+    channelId: "wechat_group",
+    name: "微信群消息",
+    structure: `岗位+地区+薪资（一行概括）
+✅ 要点1
+✅ 要点2
+✅ 要点3
+联系方式 + 转发引导`,
+    example: `📢 望京招住家保姆 | 8000/月 包吃住
+
+✅ 擅长川菜，照顾老人
+✅ 做六休一，节日红包
+✅ 有健康证优先，3年+经验
+
+👉 有意私聊我，或转发给身边的姐妹
+天鹅到家平台保障 🛡️`,
+    validate: (content) => {
+      const errors: string[] = [];
+      if (content.length > 200) errors.push(`字数超限：${content.length}/200`);
+      const lines = content.split("\n").filter(Boolean);
+      if (lines.length > 10) errors.push("群消息过长，建议控制在10行以内");
+      return { valid: errors.length === 0, errors };
+    },
+  },
 };
 
 export function getChannelTemplate(channelId: ChannelId): ChannelTemplate {

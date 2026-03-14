@@ -6,7 +6,7 @@ import type { ChannelId } from "@modules/publish-service";
 
 const schema = z.object({
   requirement: z.string().min(1, "需求不能为空"),
-  channel: z.enum(["douyin", "moments", "58city", "xiaohongshu", "wechat"]),
+  channel: z.enum(["douyin", "moments", "58city", "xiaohongshu", "wechat", "wechat_group"]),
   scenario: z.enum(["hourly", "nanny", "maternity", "cleaning"]).default("hourly"),
   tone: z.enum(["formal", "friendly", "social"]).default("formal"),
 });
