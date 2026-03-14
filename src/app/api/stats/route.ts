@@ -1,4 +1,4 @@
-import { getLogs, getStats } from "@/lib/ai/logger";
+import { getStats, getLogs } from "@modules/logger";
 
 export async function GET() {
   return Response.json({

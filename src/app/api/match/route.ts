@@ -1,6 +1,5 @@
-import { streamMatchContent } from "@/lib/ai/text";
+import { streamMatchContent, TASK_DEFAULTS } from "@modules/text-service";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
-import { TASK_DEFAULTS } from "@/lib/ai/client";
 import { z } from "zod/v4";
 
 const schema = z.object({

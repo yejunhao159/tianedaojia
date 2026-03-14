@@ -1,7 +1,8 @@
-import { streamGenerateContent } from "@/lib/ai/text";
+import { streamGenerateContent, TASK_DEFAULTS } from "@modules/text-service";
+import { CHANNELS } from "@modules/publish-service";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
-import { TASK_DEFAULTS } from "@/lib/ai/client";
 import { z } from "zod/v4";
+import type { ChannelId } from "@modules/publish-service";
 
 const schema = z.object({
   requirement: z.string().min(1, "需求不能为空"),
@@ -15,7 +16,13 @@ export const POST = withErrorHandler(
     const body = await req.json();
     const { requirement, channel, scenario, tone } = schema.parse(body);
 
-    const result = streamGenerateContent({ requirement, channel, scenario, tone });
+    const ch = CHANNELS[channel as ChannelId];
+    const result = streamGenerateContent({
+      requirement,
+      channelConfig: ch,
+      scenario,
+      tone,
+    });
     return result.toTextStreamResponse();
   },
   { route: "/api/generate", model: TASK_DEFAULTS.generate.model }

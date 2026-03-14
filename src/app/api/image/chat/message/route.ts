@@ -1,6 +1,5 @@
-import { sendChatMessage, getChat } from "@/lib/ai/image";
+import { sendChatMessage, getChat, IMAGE_MODEL } from "@modules/image-service";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
-import { IMAGE_MODEL } from "@/lib/ai/image";
 import { z } from "zod/v4";
 
 const schema = z.object({

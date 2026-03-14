@@ -1,4 +1,4 @@
-import type { ScenarioConfig, ToneConfig } from "@/types";
+import type { ScenarioConfig, ToneConfig } from "./types";
 
 export const SCENARIOS: ScenarioConfig[] = [
   { id: "hourly", name: "钟点工", icon: "clock", requiredSkills: ["做饭", "保洁", "收纳"],

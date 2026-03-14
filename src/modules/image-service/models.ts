@@ -1,15 +1,4 @@
-export type ImageModelId = "gemini-3.1-flash-image-preview";
-
-export type ImageSize = "512" | "1K" | "2K";
-export type ImageThinkingLevel = "minimal" | "high";
-
-export interface ImageModelConfig {
-  id: ImageModelId;
-  name: string;
-  maxInputImages: number;
-  maxResolution: ImageSize;
-  supportedAspects: string[];
-}
+import type { ImageModelConfig, ImageSize } from "./types";
 
 export const IMAGE_MODEL: ImageModelConfig = {
   id: "gemini-3.1-flash-image-preview",
@@ -23,7 +12,6 @@ export const IMAGE_MODEL: ImageModelConfig = {
 };
 
 const VALID_ASPECTS = IMAGE_MODEL.supportedAspects;
-export type AspectRatio = string;
 
 export function normalizeAspect(aspect: string): string {
   if (VALID_ASPECTS.includes(aspect)) return aspect;

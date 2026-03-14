@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import pLimit from "p-limit";
-import { CHANNEL_IDS, CHANNELS } from "@/lib/config/channels";
+import { CHANNEL_IDS, CHANNELS } from "@modules/publish-service";
 import { fetchGenerateStream, fetchGenerateImage } from "@/lib/services/generateService";
 import { useHistoryStore } from "./historyStore";
 import type { ChannelId, ScenarioId, ToneId } from "@/types";

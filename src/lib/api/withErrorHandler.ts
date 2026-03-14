@@ -1,4 +1,4 @@
-import { addLog } from "@/lib/ai/logger";
+import { addLog } from "@modules/logger";
 
 interface HandlerOptions {
   route?: string;

@@ -1,4 +1,4 @@
-import type { ChannelConfig, ChannelId } from "@/types";
+import type { ChannelConfig, ChannelId } from "./types";
 
 export const CHANNELS: Record<ChannelId, ChannelConfig> = {
   douyin: {

@@ -1,24 +1,19 @@
-import { extractRecruitmentInfo } from "@/lib/ai/extract";
-import type { ScenarioId } from "@/types";
+import { extractRecruitmentInfo } from "@modules/text-service";
+import { withErrorHandler } from "@/lib/api/withErrorHandler";
+import { z } from "zod/v4";
 
-export async function POST(req: Request) {
-  const { requirement, scenario } = await req.json() as {
-    requirement: string;
-    scenario: ScenarioId;
-  };
+const schema = z.object({
+  requirement: z.string().min(1, "需求不能为空"),
+  scenario: z.enum(["hourly", "nanny", "maternity", "cleaning"]).default("hourly"),
+});
 
-  if (!requirement) {
-    return new Response("Missing requirement", { status: 400 });
-  }
+export const POST = withErrorHandler(
+  async (req: Request) => {
+    const body = await req.json();
+    const { requirement, scenario } = schema.parse(body);
 
-  try {
-    const data = await extractRecruitmentInfo(requirement, scenario ?? "hourly");
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error("Failed to extract info:", error);
-    return new Response("Extraction failed", { status: 500 });
-  }
-}
+    const data = await extractRecruitmentInfo(requirement, scenario);
+    return Response.json(data);
+  },
+  { route: "/api/generate/extract", model: "claude-sonnet-4-6-thinking" }
+);

@@ -1,3 +1,5 @@
+import type { ImageTemplate } from "./types";
+
 export type ImageTemplateId =
   | "default"
   | "recruit_warm"
@@ -8,13 +10,6 @@ export type ImageTemplateId =
   | "keepFace"
   | "highQuality"
   | "replication";
-
-export interface ImageTemplate {
-  id: ImageTemplateId;
-  name: string;
-  description: string;
-  systemInstruction: string;
-}
 
 export const IMAGE_TEMPLATES: Record<ImageTemplateId, ImageTemplate> = {
   default: {

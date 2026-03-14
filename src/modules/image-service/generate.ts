@@ -1,35 +1,25 @@
 import { getImageClient } from "./client";
-import { IMAGE_MODEL, clampResolution, normalizeAspect, type ImageSize, type ImageThinkingLevel } from "./models";
+import { IMAGE_MODEL, clampResolution, normalizeAspect } from "./models";
 import { IMAGE_TEMPLATES, type ImageTemplateId } from "./templates";
+import type {
+  ImageSize,
+  ImageResult,
+  GenerateImageOptions,
+  ChatSession,
+  ChatMessage,
+  ChatPart,
+  CreateChatOptions,
+  ChatSendOptions,
+} from "./types";
 
 // ==================== 单次生成 ====================
-
-export interface ImageResult {
-  success: boolean;
-  imageBase64?: string;
-  mimeType?: string;
-  imageUrl?: string;
-  text?: string;
-  error?: string;
-  resolution?: ImageSize;
-  template?: ImageTemplateId;
-}
-
-export interface GenerateImageOptions {
-  prompt: string;
-  aspect?: string;
-  resolution?: ImageSize;
-  template?: ImageTemplateId;
-  customSystemInstruction?: string;
-  thinkingLevel?: ImageThinkingLevel;
-}
 
 export async function generateImage(opts: GenerateImageOptions): Promise<ImageResult> {
   const resolution = clampResolution(opts.resolution ?? "1K");
   const aspect = normalizeAspect(opts.aspect ?? "1:1");
-  const thinkingLevel = opts.thinkingLevel ?? "minimal";
+  const thinkingLevel = opts.thinkingLevel ?? "high";
 
-  const templateId = opts.template ?? "recruit_warm";
+  const templateId = (opts.template ?? "recruit_warm") as ImageTemplateId;
   const tpl = IMAGE_TEMPLATES[templateId];
   const systemInstruction = opts.customSystemInstruction ?? tpl?.systemInstruction ?? IMAGE_TEMPLATES.default.systemInstruction;
 
@@ -57,33 +47,6 @@ export async function generateImage(opts: GenerateImageOptions): Promise<ImageRe
 
 // ==================== 多轮对话编辑 ====================
 
-export interface ChatSession {
-  id: string;
-  history: ChatMessage[];
-  config: ChatConfig;
-  createdAt: number;
-  lastActiveAt: number;
-}
-
-interface ChatMessage {
-  role: "user" | "model";
-  parts: ChatPart[];
-}
-
-interface ChatPart {
-  text?: string;
-  inlineData?: { mimeType: string; data: string };
-  thought?: boolean;
-  thoughtSignature?: string;
-}
-
-interface ChatConfig {
-  aspect: string;
-  resolution: ImageSize;
-  systemInstruction: string;
-  thinkingLevel: ImageThinkingLevel;
-}
-
 const sessions = new Map<string, ChatSession>();
 const SESSION_TTL = 30 * 60 * 1000;
 
@@ -94,17 +57,9 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-export interface CreateChatOptions {
-  aspect?: string;
-  resolution?: ImageSize;
-  template?: ImageTemplateId;
-  customSystemInstruction?: string;
-  thinkingLevel?: ImageThinkingLevel;
-}
-
 export function createChat(opts: CreateChatOptions = {}): ChatSession {
   const id = crypto.randomUUID();
-  const templateId = opts.template ?? "default";
+  const templateId = (opts.template ?? "default") as ImageTemplateId;
   const tpl = IMAGE_TEMPLATES[templateId];
 
   const session: ChatSession = {
@@ -114,7 +69,7 @@ export function createChat(opts: CreateChatOptions = {}): ChatSession {
       aspect: normalizeAspect(opts.aspect ?? "1:1"),
       resolution: clampResolution(opts.resolution ?? "1K"),
       systemInstruction: opts.customSystemInstruction ?? tpl?.systemInstruction ?? IMAGE_TEMPLATES.default.systemInstruction,
-      thinkingLevel: opts.thinkingLevel ?? "minimal",
+      thinkingLevel: opts.thinkingLevel ?? "high",
     },
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
@@ -132,13 +87,6 @@ export function getChat(id: string): ChatSession | null {
 
 export function deleteChat(id: string): boolean {
   return sessions.delete(id);
-}
-
-export interface ChatSendOptions {
-  sessionId: string;
-  prompt: string;
-  inputImageBase64?: string;
-  inputImageMimeType?: string;
 }
 
 export async function sendChatMessage(opts: ChatSendOptions): Promise<ImageResult> {

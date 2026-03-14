@@ -1,4 +1,5 @@
-import { createChat, type CreateChatOptions, type ImageTemplateId, type ImageSize, type ImageThinkingLevel } from "@/lib/ai/image";
+import { createChat } from "@modules/image-service";
+import type { CreateChatOptions, ImageTemplateId, ImageSize, ImageThinkingLevel } from "@modules/image-service";
 import { z } from "zod/v4";
 
 const schema = z.object({

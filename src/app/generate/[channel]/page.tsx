@@ -3,7 +3,7 @@
 import { useGenerateStore } from "@/stores/generateStore";
 import { ChannelPreview } from "@/components/generate/ChannelPreview";
 import { ContentEditor } from "@/components/generate/ContentEditor";
-import { CHANNEL_LIST } from "@/lib/config/channels";
+import { CHANNEL_LIST } from "@modules/publish-service";
 import { ChannelIcon } from "@/components/icons/ChannelIcon";
 
 export default function ChannelPage() {

@@ -3,18 +3,18 @@ import { getModelForTask, getParamsForTask } from "./client";
 import { generatePrompt } from "./prompts/generate";
 import { parsePrompt } from "./prompts/parse";
 import { matchPrompt } from "./prompts/match";
-import type { ChannelId, ScenarioId, ToneId } from "@/types";
+import type { ChannelInfo } from "./types";
 
 export function streamGenerateContent(opts: {
   requirement: string;
-  channel: ChannelId;
-  scenario: ScenarioId;
-  tone: ToneId;
+  channelConfig: ChannelInfo;
+  scenario: string;
+  tone: string;
 }) {
   const params = getParamsForTask("generate");
   return streamText({
     model: getModelForTask("generate"),
-    system: generatePrompt.buildSystem({ channel: opts.channel, tone: opts.tone, scenario: opts.scenario }),
+    system: generatePrompt.buildSystem({ channelConfig: opts.channelConfig, tone: opts.tone, scenario: opts.scenario }),
     prompt: generatePrompt.buildUser({ requirement: opts.requirement }),
     temperature: params.temperature,
     maxOutputTokens: params.maxOutputTokens,

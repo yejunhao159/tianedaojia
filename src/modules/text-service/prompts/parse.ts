@@ -1,4 +1,4 @@
-import type { PromptBuilder } from "./index";
+import type { PromptBuilder } from "./engine";
 
 const SYSTEM_PROMPT = `你是天鹅到家的信息结构化专家。你的任务是将碎片化的聊天记录、电话记录等非结构化信息，提取为结构化的阿姨档案。
 

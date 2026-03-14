@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CHANNEL_LIST } from "@/lib/config/channels";
+import { CHANNEL_LIST } from "@modules/publish-service";
 import { ChannelIcon } from "@/components/icons/ChannelIcon";
 import { cn } from "@/lib/utils";
 import type { ChannelId } from "@/types";

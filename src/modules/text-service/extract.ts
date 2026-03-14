@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { generateObject } from "ai";
 import { getModelForTask, getParamsForTask } from "./client";
-import type { ScenarioId } from "@/types";
 
 export const recruitmentSchema = z.object({
   jobTitle: z.string().describe("岗位名称，例如：住家保姆、钟点工、月嫂等"),
@@ -16,7 +15,7 @@ export const recruitmentSchema = z.object({
 
 export type RecruitmentData = z.infer<typeof recruitmentSchema>;
 
-export async function extractRecruitmentInfo(requirement: string, scenario: ScenarioId) {
+export async function extractRecruitmentInfo(requirement: string, scenario: string) {
   const params = getParamsForTask("extract");
 
   const result = await generateObject({

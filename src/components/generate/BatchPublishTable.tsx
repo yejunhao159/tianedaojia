@@ -1,6 +1,6 @@
 "use client";
 
-import { CHANNEL_LIST } from "@/lib/config/channels";
+import { CHANNEL_LIST } from "@modules/publish-service";
 import { ChannelIcon, CHANNEL_COLORS } from "@/components/icons/ChannelIcon";
 import { Copy, Check, ExternalLink, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";

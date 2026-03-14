@@ -1,4 +1,4 @@
-import type { PromptBuilder } from "./index";
+import type { PromptBuilder } from "./engine";
 
 const SYSTEM_PROMPT = `你是天鹅到家的智能匹配专家。根据用户的招聘需求和候选阿姨的档案，进行综合评估和排名。
 

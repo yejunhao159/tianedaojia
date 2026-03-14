@@ -1,4 +1,6 @@
-import { generateImage, IMAGE_TEMPLATES, IMAGE_MODEL, type ImageTemplateId, type ImageSize, type ImageThinkingLevel } from "@/lib/ai/image";
+import { generateImage, IMAGE_TEMPLATES, IMAGE_MODEL } from "@modules/image-service";
+import type { ImageTemplateId } from "@modules/image-service";
+import type { ImageSize, ImageThinkingLevel } from "@modules/image-service";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
 import { z } from "zod/v4";
 
