@@ -30,10 +30,19 @@ const empty = <T,>(val: T) =>
 const textLimit = pLimit(3);
 const imageLimit = pLimit(6);
 
-const IMAGE_SCENE_PROMPTS = [
-  "温馨的家政服务场景，阿姨在整洁明亮的厨房做饭，暖色调",
-  "专业的家政服务人员在工作，认真细致的特写，干净利落",
-  "家庭温暖的互动场景，阿姨和家人在客厅，自然光线，温馨氛围",
+const CHANNEL_IMAGE_TEMPLATE: Record<string, string> = {
+  douyin: "socialMedia",
+  moments: "lifestyle",
+  "58city": "recruit_professional",
+  xiaohongshu: "socialMedia",
+  wechat: "recruit_professional",
+  wechat_group: "recruit_warm",
+};
+
+const IMAGE_ANGLES = [
+  "整体服务场景，温馨明亮的家庭环境",
+  "工作细节特写，展示专业技能",
+  "温暖的人物互动，传递信任感",
 ];
 
 export const useGenerateStore = create<GenerateState>((set, get) => ({
@@ -65,6 +74,7 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       imageStatuses: empty<Status>("idle"),
     });
 
+    // Phase 1: 文案生成（3并发）
     const textTasks = CHANNEL_IDS.map((ch) =>
       textLimit(async () => {
         set((s) => ({ statuses: { ...s.statuses, [ch]: "generating" } }));
@@ -81,15 +91,27 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       })
     );
 
+    await Promise.allSettled(textTasks);
+
+    // Phase 2: 基于文案内容生成配图（6并发，每渠道3张）
+    const finalContents = get().contents;
+
     const imageTasks = CHANNEL_IDS.flatMap((ch) => {
+      const text = finalContents[ch];
+      if (!text) return [];
+
       set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "generating" } }));
-      return IMAGE_SCENE_PROMPTS.map((scene, i) =>
+      const template = CHANNEL_IMAGE_TEMPLATE[ch] ?? "recruit_warm";
+      const summary = text.replace(/[#@\n]/g, " ").slice(0, 150);
+
+      return IMAGE_ANGLES.map((angle, i) =>
         imageLimit(async () => {
           try {
-            const prompt = `${requirement}。${scene}`;
+            const prompt = `为${CHANNELS[ch].name}平台的家政招聘文案配图。文案摘要：「${summary}」。画面要求：${angle}。中国家庭场景，不要文字水印。`;
             const url = await fetchGenerateImage({
               prompt,
               aspect: CHANNELS[ch].imageAspect,
+              template,
             });
             if (url) {
               set((s) => {
@@ -97,7 +119,7 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
                 return { images: { ...s.images, [ch]: [...current, url] } };
               });
             }
-            if (i === IMAGE_SCENE_PROMPTS.length - 1) {
+            if (i === IMAGE_ANGLES.length - 1) {
               set((s) => ({
                 imageStatuses: { ...s.imageStatuses, [ch]: (s.images[ch]?.length ?? 0) > 0 ? "done" : "error" },
               }));
@@ -109,10 +131,9 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       );
     });
 
-    await Promise.allSettled([...textTasks, ...imageTasks]);
+    await Promise.allSettled(imageTasks);
     set({ isGenerating: false });
 
-    const finalContents = get().contents;
     const filled = CHANNEL_IDS.filter((ch) => finalContents[ch].length > 0);
     if (filled.length > 0) {
       useHistoryStore.getState().addEntry({

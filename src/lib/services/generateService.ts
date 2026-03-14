@@ -25,42 +25,22 @@ export async function fetchGenerateStream(opts: {
 export async function fetchGenerateImage(opts: {
   prompt: string;
   aspect: string;
+  template?: string;
 }): Promise<string | null> {
   try {
     const res = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(opts),
+      body: JSON.stringify({
+        prompt: opts.prompt,
+        aspect: opts.aspect,
+        template: opts.template ?? "recruit_warm",
+      }),
     });
     if (!res.ok) return null;
     const data = await res.json();
     return data.imageUrl ?? null;
   } catch {
     return null;
-  }
-}
-
-export async function fetchBatchImages(opts: {
-  prompt: string;
-  aspect: string;
-  count?: number;
-  template?: string;
-}): Promise<string[]> {
-  try {
-    const res = await fetch("/api/image/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: opts.prompt,
-        aspect: opts.aspect,
-        count: opts.count ?? 3,
-        template: opts.template,
-      }),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.images ?? [];
-  } catch {
-    return [];
   }
 }

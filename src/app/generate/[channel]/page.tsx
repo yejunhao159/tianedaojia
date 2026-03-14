@@ -62,11 +62,13 @@ export default function ChannelPage() {
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-1 flex-col justify-between px-4 py-3">
+                <div className="flex flex-1 flex-col justify-between px-4 py-2.5">
                   {hasContent ? (
                     <>
-                      <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-600">{firstLine}</p>
-                      <div className="mt-auto flex items-center justify-between pt-2">
+                      <p className="line-clamp-4 text-[10.5px] leading-[1.7] text-slate-600">
+                        {contents[ch.id].slice(0, 120)}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between border-t border-border/15 pt-2">
                         <div className="flex items-center gap-2">
                           <span className={cn(
                             "text-[9px] tabular-nums",
@@ -81,10 +83,13 @@ export default function ChannelPage() {
                   ) : (
                     <div className="flex flex-1 items-center justify-center">
                       {st === "generating" ? (
-                        <div className="flex gap-1">
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "0ms" }} />
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "150ms" }} />
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "300ms" }} />
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="flex gap-1">
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "0ms" }} />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "150ms" }} />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "300ms" }} />
+                          </div>
+                          <span className="text-[9px] text-brand/50">AI 生成中</span>
                         </div>
                       ) : (
                         <span className="text-[10px] text-muted-foreground/30">{st === "idle" ? "等待生成" : "失败"}</span>
