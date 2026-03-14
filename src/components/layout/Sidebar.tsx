@@ -3,18 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, PenLine, Layers3, Target, MessageSquare, Settings, Bird, PanelLeftClose, PanelLeftOpen, History } from "lucide-react";
+import {
+  LayoutGrid, PenLine, Layers3, Target, Bot,
+  Database, Send, Settings, Bird,
+  PanelLeftClose, PanelLeftOpen, History,
+} from "lucide-react";
 import { useState } from "react";
 
 const NAV = [
-  { label: "主菜单", type: "section" as const },
-  { href: "/", icon: LayoutDashboard, label: "总控仪表盘" },
-  { href: "/generate", icon: PenLine, label: "招募文案生成", prefix: true },
+  { label: "招募管理", type: "section" as const },
+  { href: "/", icon: LayoutGrid, label: "招募中心" },
+  { href: "/generate", icon: PenLine, label: "文案生成", prefix: true },
   { href: "/parse", icon: Layers3, label: "信息结构化" },
   { href: "/match", icon: Target, label: "智能匹配" },
-  { label: "辅助工具", type: "section" as const },
+  { label: "AI 能力", type: "section" as const },
+  { href: "/agents", icon: Bot, label: "智能体" },
+  { href: "/data", icon: Database, label: "数据管理" },
+  { label: "运营工具", type: "section" as const },
+  { href: "/publish", icon: Send, label: "发布管理" },
   { href: "/history", icon: History, label: "历史记录" },
-  { href: "/chat", icon: MessageSquare, label: "AI 对话助手" },
 ];
 
 export function Sidebar() {
@@ -22,15 +29,15 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <aside className={cn("glass flex h-screen shrink-0 flex-col border-r border-sidebar-border transition-all duration-300", collapsed ? "w-[68px]" : "w-[260px]")}>
+    <aside className={cn("glass flex h-screen shrink-0 flex-col border-r border-sidebar-border transition-all duration-300", collapsed ? "w-[68px]" : "w-[240px]")}>
       <div className={cn("flex items-center gap-3 py-5", collapsed ? "justify-center px-3" : "px-5")}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
-          <Bird size={22} strokeWidth={1.8} />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
+          <Bird size={20} strokeWidth={1.8} />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <h1 className="text-[15px] font-bold tracking-tight">天鹅到家</h1>
-            <p className="text-[11px] font-medium text-muted-foreground">AI 智能招募平台</p>
+            <h1 className="text-[14px] font-bold tracking-tight">天鹅到家</h1>
+            <p className="text-[10px] font-medium text-muted-foreground">AI 智能招募平台</p>
           </div>
         )}
       </div>
@@ -39,34 +46,34 @@ export function Sidebar() {
         {NAV.map((item, i) => {
           if (item.type === "section") {
             if (collapsed) return null;
-            return <p key={i} className="mt-5 mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">{item.label}</p>;
+            return <p key={i} className="mt-4 mb-1.5 px-3 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/40">{item.label}</p>;
           }
           const active = item.prefix ? pathname.startsWith(item.href!) : pathname === item.href;
           const Icon = item.icon!;
           return (
             <Link key={item.href} href={item.href!} title={collapsed ? item.label : undefined}
-              className={cn("flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all", collapsed ? "justify-center p-2.5" : "px-3 py-2.5",
+              className={cn("flex items-center gap-2.5 rounded-xl text-[12.5px] font-medium transition-all", collapsed ? "justify-center p-2.5" : "px-3 py-2",
                 active ? "bg-secondary text-brand font-semibold" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
-              {active && !collapsed && <span className="h-5 w-[3px] rounded-full bg-brand" />}
-              <Icon size={18} strokeWidth={active ? 2 : 1.6} className="shrink-0" />
+              {active && !collapsed && <span className="h-4 w-[3px] rounded-full bg-brand" />}
+              <Icon size={16} strokeWidth={active ? 2 : 1.5} className="shrink-0" />
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-3" : "px-3 py-3")}>
-        <button onClick={() => setCollapsed(!collapsed)} className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground", collapsed && "justify-center")}>
-          {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.6} /> : <><PanelLeftClose size={16} strokeWidth={1.6} /><span>收起侧栏</span></>}
+      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-2" : "px-3 py-2")}>
+        <button onClick={() => setCollapsed(!collapsed)} className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground", collapsed && "justify-center")}>
+          {collapsed ? <PanelLeftOpen size={15} strokeWidth={1.5} /> : <><PanelLeftClose size={15} strokeWidth={1.5} /><span>收起</span></>}
         </button>
       </div>
 
-      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-3" : "px-4 py-4")}>
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/8 text-sm font-semibold text-brand">管</div>
+      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-3" : "px-4 py-3")}>
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-2.5")}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/8 text-[11px] font-semibold text-brand">管</div>
           {!collapsed && (
-            <><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">管理员</p><p className="truncate text-[11px] text-muted-foreground">admin@daojia.com</p></div>
-            <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted/60"><Settings size={15} strokeWidth={1.6} /></button></>
+            <><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">管理员</p></div>
+            <button className="rounded-lg p-1 text-muted-foreground hover:bg-muted/60"><Settings size={14} strokeWidth={1.5} /></button></>
           )}
         </div>
       </div>
