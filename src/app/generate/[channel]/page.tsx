@@ -62,63 +62,32 @@ export default function ChannelPage() {
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-1 flex-col justify-center px-4 pb-3">
+                <div className="flex flex-1 flex-col justify-between px-4 py-3">
                   {hasContent ? (
-                    <div className="space-y-2.5">
-                      {/* 首行摘要 */}
-                      <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-700">{firstLine}</p>
-
-                      {/* 配图缩略 */}
-                      {imgCount > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          {images[ch.id].slice(0, 3).map((url, i) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img key={i} src={url} alt="" className="h-8 w-8 rounded border border-border/30 object-cover" />
-                          ))}
-                          {imgCount > 3 && (
-                            <span className="text-[9px] text-muted-foreground">+{imgCount - 3}</span>
-                          )}
-                        </div>
-                      )}
-                      {imgSt === "generating" && (
-                        <div className="flex items-center gap-1 text-[9px] text-purple-400">
-                          <Image size={9} /><Loader2 size={9} className="animate-spin" />配图中
-                        </div>
-                      )}
-
-                      {/* 底部指标 */}
-                      <div className="flex items-center justify-between pt-1 border-t border-border/20">
+                    <>
+                      <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-600">{firstLine}</p>
+                      <div className="mt-auto flex items-center justify-between pt-2">
                         <div className="flex items-center gap-2">
                           <span className={cn(
-                            "text-[9px] tabular-nums font-medium",
-                            charCount > CHANNELS[ch.id].maxTextLength ? "text-red-500" : "text-muted-foreground"
-                          )}>
-                            {charCount}/{CHANNELS[ch.id].maxTextLength}字
-                          </span>
-                          {imgCount > 0 && (
-                            <span className="text-[9px] text-blue-500">{imgCount}张配图</span>
-                          )}
+                            "text-[9px] tabular-nums",
+                            charCount > CHANNELS[ch.id].maxTextLength ? "text-red-500 font-medium" : "text-muted-foreground"
+                          )}>{charCount}字</span>
+                          {imgCount > 0 && <span className="text-[9px] text-blue-500">{imgCount}图</span>}
+                          {imgSt === "generating" && <Loader2 size={9} className="animate-spin text-purple-400" />}
                         </div>
-                        <span className="flex items-center gap-0.5 text-[9px] font-medium text-brand">
-                          <PenLine size={9} />编辑
-                        </span>
+                        <span className="flex items-center gap-0.5 text-[9px] font-medium text-brand"><PenLine size={9} />编辑</span>
                       </div>
-                    </div>
+                    </>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-1 text-center">
+                    <div className="flex flex-1 items-center justify-center">
                       {st === "generating" ? (
-                        <>
-                          <div className="flex gap-1">
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "0ms" }} />
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "150ms" }} />
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "300ms" }} />
-                          </div>
-                          <span className="text-[10px] text-brand/60">AI 生成中</span>
-                        </>
+                        <div className="flex gap-1">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "0ms" }} />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "150ms" }} />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand" style={{ animationDelay: "300ms" }} />
+                        </div>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground/30">
-                          {st === "idle" ? "等待生成" : "生成失败"}
-                        </span>
+                        <span className="text-[10px] text-muted-foreground/30">{st === "idle" ? "等待生成" : "失败"}</span>
                       )}
                     </div>
                   )}

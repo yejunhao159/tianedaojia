@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 export default function GenerateLayout({ children }: { children: React.ReactNode }) {
   const {
-    requirement, scenario, tone, isGenerating, isGeneratingImages,
+    requirement, scenario, tone, isGenerating,
     statuses, contents, images, imageStatuses,
     setRequirement, setScenario, setTone, batchGenerate,
   } = useGenerateStore();
@@ -23,7 +23,7 @@ export default function GenerateLayout({ children }: { children: React.ReactNode
   const showSave = allTextDone && anyContent && !isGenerating;
 
   const imagesDoneCount = CHANNEL_IDS.filter((ch) => imageStatuses[ch] === "done").length;
-  const imagesTotal = CHANNEL_IDS.filter((ch) => contents[ch].length > 0).length;
+  const imagesGenerating = CHANNEL_IDS.some((ch) => imageStatuses[ch] === "generating");
 
   const handleSave = () => {
     const channelsRecord = Object.fromEntries(
@@ -56,17 +56,17 @@ export default function GenerateLayout({ children }: { children: React.ReactNode
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col gap-4">
       <div className="flex min-h-0 flex-1 gap-4">
-        <div className="flex min-w-0 flex-[3] flex-col gap-3 overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto pt-2">
+        <div className="flex min-w-0 flex-[3] flex-col overflow-hidden">
+          <div className="min-h-0 flex-1">
             {children}
           </div>
         </div>
 
-        <div className="w-[320px] shrink-0 overflow-y-auto">
-          <div className="flex flex-col gap-4">
+        <div className="w-[280px] shrink-0 overflow-y-auto hide-scrollbar">
+          <div className="flex flex-col gap-3">
             <div>
-              <h1 className="text-lg font-bold tracking-tight">招募文案生成</h1>
-              <p className="text-[12px] text-muted-foreground">输入需求，AI 为每个渠道生成适配文案</p>
+              <h1 className="text-[15px] font-bold tracking-tight">招募文案生成</h1>
+              <p className="text-[11px] text-muted-foreground">AI 为 6 个渠道生成适配文案 + 配图</p>
             </div>
             <RequirementInput
               requirement={requirement}
@@ -79,25 +79,21 @@ export default function GenerateLayout({ children }: { children: React.ReactNode
               onGenerate={batchGenerate}
             />
 
-            {isGeneratingImages && (
-              <div className="flex items-center gap-2 rounded-xl border border-purple-100 bg-purple-50/50 px-4 py-3 text-[12px]">
-                <Image size={14} className="text-purple-500" />
-                <span className="text-purple-700">
-                  配图生成中 {imagesDoneCount}/{imagesTotal}
-                </span>
-                <Loader2 size={12} className="ml-auto animate-spin text-purple-400" />
+            {imagesGenerating && (
+              <div className="flex items-center gap-2 rounded-xl border border-purple-100 bg-purple-50/50 px-3 py-2 text-[11px]">
+                <Image size={12} className="text-purple-500" />
+                <span className="text-purple-700">配图 {imagesDoneCount}/6</span>
+                <Loader2 size={10} className="ml-auto animate-spin text-purple-400" />
               </div>
             )}
 
             {showSave && (
-              <button
-                onClick={handleSave}
+              <button onClick={handleSave}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all active:scale-[0.98]",
+                  "flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[12px] font-semibold transition-all active:scale-[0.98]",
                   "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
-                )}
-              >
-                <Save size={15} />
+                )}>
+                <Save size={14} />
                 确认保存到招募中心
               </button>
             )}

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import pLimit from "p-limit";
 import { CHANNEL_IDS, CHANNELS } from "@modules/publish-service";
-import { fetchGenerateStream, fetchBatchImages } from "@/lib/services/generateService";
+import { fetchGenerateStream, fetchGenerateImage } from "@/lib/services/generateService";
 import { useHistoryStore } from "./historyStore";
 import type { ChannelId, ScenarioId, ToneId } from "@/types";
 
@@ -16,21 +16,25 @@ interface GenerateState {
   images: Record<ChannelId, string[]>;
   imageStatuses: Record<ChannelId, Status>;
   isGenerating: boolean;
-  isGeneratingImages: boolean;
 
   setRequirement: (v: string) => void;
   setScenario: (v: ScenarioId) => void;
   setTone: (v: ToneId) => void;
   updateContent: (ch: ChannelId, text: string) => void;
   batchGenerate: () => Promise<void>;
-  saveToRecruit: () => void;
 }
 
 const empty = <T,>(val: T) =>
   Object.fromEntries(CHANNEL_IDS.map((id) => [id, val])) as Record<ChannelId, T>;
 
-const textLimit = pLimit(2);
-const imageLimit = pLimit(5);
+const textLimit = pLimit(3);
+const imageLimit = pLimit(6);
+
+const IMAGE_SCENE_PROMPTS = [
+  "温馨的家政服务场景，阿姨在整洁明亮的厨房做饭，暖色调",
+  "专业的家政服务人员在工作，认真细致的特写，干净利落",
+  "家庭温暖的互动场景，阿姨和家人在客厅，自然光线，温馨氛围",
+];
 
 export const useGenerateStore = create<GenerateState>((set, get) => ({
   requirement: "",
@@ -41,7 +45,6 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
   images: empty<string[]>([]),
   imageStatuses: empty<Status>("idle"),
   isGenerating: false,
-  isGeneratingImages: false,
 
   setRequirement: (v) => set({ requirement: v }),
   setScenario: (v) => set({ scenario: v }),
@@ -56,14 +59,12 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
 
     set({
       isGenerating: true,
-      isGeneratingImages: false,
       contents: empty(""),
       statuses: empty<Status>("idle"),
       images: empty<string[]>([]),
       imageStatuses: empty<Status>("idle"),
     });
 
-    // Phase 1: 并发生成所有渠道的文案
     const textTasks = CHANNEL_IDS.map((ch) =>
       textLimit(async () => {
         set((s) => ({ statuses: { ...s.statuses, [ch]: "generating" } }));
@@ -80,48 +81,46 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       })
     );
 
-    await Promise.allSettled(textTasks);
-    set({ isGenerating: false, isGeneratingImages: true });
+    const imageTasks = CHANNEL_IDS.flatMap((ch) => {
+      set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "generating" } }));
+      return IMAGE_SCENE_PROMPTS.map((scene, i) =>
+        imageLimit(async () => {
+          try {
+            const prompt = `${requirement}。${scene}`;
+            const url = await fetchGenerateImage({
+              prompt,
+              aspect: CHANNELS[ch].imageAspect,
+            });
+            if (url) {
+              set((s) => {
+                const current = s.images[ch] ?? [];
+                return { images: { ...s.images, [ch]: [...current, url] } };
+              });
+            }
+            if (i === IMAGE_SCENE_PROMPTS.length - 1) {
+              set((s) => ({
+                imageStatuses: { ...s.imageStatuses, [ch]: (s.images[ch]?.length ?? 0) > 0 ? "done" : "error" },
+              }));
+            }
+          } catch (e) {
+            console.error(`[genImage ${ch}:${i}]`, e);
+          }
+        })
+      );
+    });
 
-    // Phase 2: 文案完成后，根据文案内容生成配图
+    await Promise.allSettled([...textTasks, ...imageTasks]);
+    set({ isGenerating: false });
+
     const finalContents = get().contents;
-    const imageTasks = CHANNEL_IDS.map((ch) =>
-      imageLimit(async () => {
-        const text = finalContents[ch];
-        if (!text) return;
-
-        set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "generating" } }));
-        try {
-          const imagePrompt = `根据以下${CHANNELS[ch].name}招聘文案生成配图：\n\n${text.slice(0, 300)}`;
-          const urls = await fetchBatchImages({
-            prompt: imagePrompt,
-            aspect: CHANNELS[ch].imageAspect,
-            count: 3,
-          });
-          set((s) => ({
-            images: { ...s.images, [ch]: urls },
-            imageStatuses: { ...s.imageStatuses, [ch]: urls.length > 0 ? "done" : "error" },
-          }));
-        } catch (e) {
-          console.error(`[genImage ${ch}]`, e);
-          set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "error" } }));
-        }
-      })
-    );
-
-    await Promise.allSettled(imageTasks);
-    set({ isGeneratingImages: false });
-
     const filled = CHANNEL_IDS.filter((ch) => finalContents[ch].length > 0);
     if (filled.length > 0) {
       useHistoryStore.getState().addEntry({
         type: "generate",
         title: requirement.slice(0, 40),
-        summary: `生成了 ${filled.length} 个渠道的文案`,
+        summary: `生成了 ${filled.length} 个渠道的文案和配图`,
         data: { requirement, scenario, tone, contents: finalContents },
       });
     }
   },
-
-  saveToRecruit: () => {},
 }));
