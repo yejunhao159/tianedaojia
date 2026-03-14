@@ -1,6 +1,6 @@
-import { streamGenerateContent } from "@/lib/ai/claude";
+import { streamGenerateContent } from "@/lib/ai/text";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
-import { DEFAULT_MODEL } from "@/lib/ai/client";
+import { TASK_DEFAULTS } from "@/lib/ai/client";
 import { z } from "zod/v4";
 
 const schema = z.object({
@@ -18,5 +18,5 @@ export const POST = withErrorHandler(
     const result = streamGenerateContent({ requirement, channel, scenario, tone });
     return result.toTextStreamResponse();
   },
-  { route: "/api/generate", model: DEFAULT_MODEL }
+  { route: "/api/generate", model: TASK_DEFAULTS.generate.model }
 );

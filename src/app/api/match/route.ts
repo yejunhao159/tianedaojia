@@ -1,7 +1,6 @@
-import { streamText } from "ai";
-import { getAIClient, DEFAULT_MODEL } from "@/lib/ai/client";
-import { MATCH_SYSTEM_PROMPT, buildMatchPrompt } from "@/lib/ai/prompts/match";
+import { streamMatchContent } from "@/lib/ai/text";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
+import { TASK_DEFAULTS } from "@/lib/ai/client";
 import { z } from "zod/v4";
 
 const schema = z.object({
@@ -14,15 +13,8 @@ export const POST = withErrorHandler(
     const body = await req.json();
     const { requirement, candidates } = schema.parse(body);
 
-    const result = streamText({
-      model: getAIClient()(DEFAULT_MODEL),
-      system: MATCH_SYSTEM_PROMPT,
-      prompt: buildMatchPrompt(requirement, candidates),
-      maxOutputTokens: 3000,
-      temperature: 0.3,
-    });
-
+    const result = streamMatchContent(requirement, candidates);
     return result.toTextStreamResponse();
   },
-  { route: "/api/match", model: DEFAULT_MODEL }
+  { route: "/api/match", model: TASK_DEFAULTS.match.model }
 );

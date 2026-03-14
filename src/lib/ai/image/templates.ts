@@ -1,76 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
-const API_KEY = process.env.GEMINI_API_KEY!;
-const BASE_URL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
-
-let _genai: GoogleGenAI | null = null;
-
-function getGenAI() {
-  if (!_genai) {
-    _genai = new GoogleGenAI({ apiKey: API_KEY, httpOptions: { baseUrl: BASE_URL } });
-  }
-  return _genai;
-}
-
-// ==================== 模型配置 ====================
-
-export type ImageModelId =
-  | "gemini-2.5-flash-image"
-  | "gemini-3.1-flash-image-preview"
-  | "gemini-3-pro-image-preview";
-
-export interface ImageModelConfig {
-  id: ImageModelId;
-  name: string;
-  tier: "standard" | "enhanced" | "pro";
-  maxInputImages: number;
-  maxResolution: ImageSize;
-  supportsThinking: boolean;
-}
-
-export const IMAGE_MODELS: Record<ImageModelId, ImageModelConfig> = {
-  "gemini-2.5-flash-image": {
-    id: "gemini-2.5-flash-image",
-    name: "Gemini 2.5 Flash Image",
-    tier: "standard",
-    maxInputImages: 5,
-    maxResolution: "1K",
-    supportsThinking: false,
-  },
-  "gemini-3.1-flash-image-preview": {
-    id: "gemini-3.1-flash-image-preview",
-    name: "Gemini 3.1 Flash Image",
-    tier: "enhanced",
-    maxInputImages: 10,
-    maxResolution: "2K",
-    supportsThinking: false,
-  },
-  "gemini-3-pro-image-preview": {
-    id: "gemini-3-pro-image-preview",
-    name: "Gemini 3 Pro Image",
-    tier: "pro",
-    maxInputImages: 14,
-    maxResolution: "4K",
-    supportsThinking: true,
-  },
-};
-
-// ==================== 分辨率管控 ====================
-
-export type ImageSize = "1K" | "2K" | "4K";
-
-const RESOLUTION_ORDER: ImageSize[] = ["1K", "2K", "4K"];
-
-function clampResolution(requested: ImageSize, model: ImageModelId): ImageSize {
-  const max = IMAGE_MODELS[model]?.maxResolution ?? "1K";
-  const reqIdx = RESOLUTION_ORDER.indexOf(requested);
-  const maxIdx = RESOLUTION_ORDER.indexOf(max);
-  if (reqIdx < 0) return max;
-  return RESOLUTION_ORDER[Math.min(reqIdx, maxIdx)];
-}
-
-// ==================== 系统指令模板 ====================
-
 export type ImageTemplateId =
   | "default"
   | "recruit_warm"
@@ -104,7 +31,6 @@ Quality standards for ALL generated images:
 - Coherent color palette that matches the mood and context
 - No watermarks, text overlays, or UI elements unless explicitly requested`,
   },
-
   recruit_warm: {
     id: "recruit_warm",
     name: "家政招聘·温馨风",
@@ -119,7 +45,6 @@ Quality standards for ALL generated images:
 - 光线柔和自然，如同阳光透过窗帘的感觉
 - 传递专业、可信赖、有温度的品牌感`,
   },
-
   recruit_professional: {
     id: "recruit_professional",
     name: "家政招聘·专业风",
@@ -134,7 +59,6 @@ Quality standards for ALL generated images:
 - 拍摄角度专业：三分法构图，适当的景深
 - 画质清晰锐利，适合在58同城等招聘平台使用`,
   },
-
   socialMedia: {
     id: "socialMedia",
     name: "社交媒体素材",
@@ -150,7 +74,6 @@ Requirements:
 - Composition should work well in both square (1:1) and vertical (9:16) crops
 - The image should evoke emotion or curiosity — make people stop scrolling`,
   },
-
   lifestyle: {
     id: "lifestyle",
     name: "生活方式场景",
@@ -166,7 +89,6 @@ Requirements:
 - Environment details should reinforce the brand positioning
 - Output should feel like an editorial lifestyle photograph`,
   },
-
   productWhiteBG: {
     id: "productWhiteBG",
     name: "产品白底图",
@@ -182,7 +104,6 @@ CRITICAL requirements:
 - Surface textures clearly visible
 - No props, decorations, or context unless explicitly requested`,
   },
-
   keepFace: {
     id: "keepFace",
     name: "人脸保持",
@@ -199,7 +120,6 @@ STRICT PROHIBITIONS:
 - Do NOT age or de-age the person
 - Do NOT change body type or proportions`,
   },
-
   highQuality: {
     id: "highQuality",
     name: "商业交付级",
@@ -214,7 +134,6 @@ Quality standards:
 - Every element in the frame serves a purpose — no visual clutter
 Prioritize visual excellence and commercial usability above all else.`,
   },
-
   replication: {
     id: "replication",
     name: "图片复刻",
@@ -234,97 +153,6 @@ QUALITY STANDARDS:
   },
 };
 
-// ==================== 核心生成函数 ====================
-
-export interface ImageResult {
-  success: boolean;
-  imageBase64?: string;
-  mimeType?: string;
-  imageUrl?: string;
-  text?: string;
-  error?: string;
-  model?: ImageModelId;
-  resolution?: ImageSize;
-  template?: ImageTemplateId;
-}
-
-const VALID_ASPECTS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"] as const;
-type AspectRatio = typeof VALID_ASPECTS[number];
-
-function normalizeAspect(aspect: string): AspectRatio {
-  if (VALID_ASPECTS.includes(aspect as AspectRatio)) return aspect as AspectRatio;
-  return "1:1";
-}
-
-export interface GenerateImageOptions {
-  prompt: string;
-  aspect?: string;
-  model?: ImageModelId;
-  resolution?: ImageSize;
-  template?: ImageTemplateId;
-  customSystemInstruction?: string;
-}
-
-export async function generateRecruitImage(opts: GenerateImageOptions): Promise<ImageResult> {
-  const model = opts.model ?? "gemini-3.1-flash-image-preview";
-  const resolution = clampResolution(opts.resolution ?? "1K", model);
-  const aspect = normalizeAspect(opts.aspect ?? "1:1");
-
-  const templateId = opts.template ?? "recruit_warm";
-  const tpl = IMAGE_TEMPLATES[templateId];
-  const systemInstruction = opts.customSystemInstruction ?? tpl?.systemInstruction ?? IMAGE_TEMPLATES.default.systemInstruction;
-
-  try {
-    const ai = getGenAI();
-    const response = await ai.models.generateContent({
-      model,
-      contents: opts.prompt,
-      config: {
-        responseModalities: ["TEXT", "IMAGE"],
-        systemInstruction,
-        imageConfig: {
-          aspectRatio: aspect,
-          imageSize: resolution,
-        },
-      },
-    });
-
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (!parts?.length) {
-      return { success: false, error: "Empty response from model" };
-    }
-
-    let text: string | undefined;
-    let imageBase64: string | undefined;
-    let mimeType: string | undefined;
-
-    for (const part of parts) {
-      if (part.thought) continue;
-      if (part.text) {
-        text = part.text;
-      } else if (part.inlineData) {
-        imageBase64 = part.inlineData.data;
-        mimeType = part.inlineData.mimeType;
-      }
-    }
-
-    if (imageBase64) {
-      return {
-        success: true,
-        imageBase64,
-        mimeType: mimeType || "image/png",
-        imageUrl: `data:${mimeType || "image/png"};base64,${imageBase64}`,
-        text,
-        model,
-        resolution,
-        template: templateId,
-      };
-    }
-
-    return { success: false, error: "No image in response", text };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("[ImageService] Generation failed:", msg);
-    return { success: false, error: msg };
-  }
+export function getImageTemplate(id?: ImageTemplateId): ImageTemplate {
+  return IMAGE_TEMPLATES[id ?? "default"] ?? IMAGE_TEMPLATES.default;
 }

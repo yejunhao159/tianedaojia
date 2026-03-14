@@ -1,7 +1,7 @@
 "use client";
 
 import { Textarea } from "@/components/ui/textarea";
-import { SCENARIOS, TONES } from "@/lib/scenarios";
+import { SCENARIOS, TONES } from "@/lib/config/scenarios";
 import { cn } from "@/lib/utils";
 import { Clock, Home, Baby, Sparkles, Briefcase, Heart, Zap, Wand2 } from "lucide-react";
 import type { ScenarioId, ToneId } from "@/types";

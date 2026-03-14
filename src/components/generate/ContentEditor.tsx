@@ -1,6 +1,6 @@
 "use client";
 
-import { CHANNELS } from "@/lib/channels";
+import { CHANNELS } from "@/lib/config/channels";
 import { ChannelIcon } from "@/components/icons/ChannelIcon";
 import { Copy, Check, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";

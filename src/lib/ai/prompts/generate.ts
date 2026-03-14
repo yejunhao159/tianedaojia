@@ -1,5 +1,6 @@
-import { CHANNELS } from "@/lib/channels";
+import { CHANNELS } from "@/lib/config/channels";
 import type { ChannelId, ScenarioId, ToneId } from "@/types";
+import type { PromptBuilder } from "./index";
 
 const TONE_MAP: Record<ToneId, string> = {
   formal: "正式专业，措辞严谨，适合正规招聘平台",
@@ -14,21 +15,35 @@ const SCENARIO_CTX: Record<ScenarioId, string> = {
   cleaning: "保洁人员招聘，日常清洁或深度清洁服务",
 };
 
-export function buildSystemPrompt(channelId: ChannelId, tone: ToneId, scenario: ScenarioId): string {
-  const ch = CHANNELS[channelId];
-  return `你是「天鹅到家」平台的资深招募文案专家。
+interface GenerateSystemVars {
+  channel: ChannelId;
+  tone: ToneId;
+  scenario: ScenarioId;
+}
+
+interface GenerateUserVars {
+  requirement: string;
+}
+
+export const generatePrompt: PromptBuilder<GenerateSystemVars, GenerateUserVars> = {
+  id: "generate",
+  name: "招募文案生成",
+
+  buildSystem: (vars) => {
+    if (!vars) return "你是「天鹅到家」平台的资深招募文案专家。";
+    const ch = CHANNELS[vars.channel];
+    return `你是「天鹅到家」平台的资深招募文案专家。
 
 ## 当前渠道：${ch.name}
 ${ch.formatRules}
 
-## 语气：${TONE_MAP[tone]}，融合渠道调性：${ch.toneHint}
-## 场景：${SCENARIO_CTX[scenario]}
+## 语气：${TONE_MAP[vars.tone]}，融合渠道调性：${ch.toneHint}
+## 场景：${SCENARIO_CTX[vars.scenario]}
 ## 字数限制：不超过 ${ch.maxTextLength} 字
 ## 品牌调性：专业、温暖、可信赖。自然融入品牌感。
 
 直接输出文案，不加解释。严格遵守格式规则。内容真实可信，薪资合理。`;
-}
+  },
 
-export function buildUserPrompt(requirement: string): string {
-  return `请根据以下招聘需求生成文案：\n\n${requirement}`;
-}
+  buildUser: (vars) => `请根据以下招聘需求生成文案：\n\n${vars.requirement}`,
+};

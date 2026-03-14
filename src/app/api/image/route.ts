@@ -1,4 +1,4 @@
-import { generateRecruitImage, IMAGE_TEMPLATES, IMAGE_MODELS, type ImageTemplateId, type ImageModelId, type ImageSize } from "@/lib/ai/imageService";
+import { generateImage, IMAGE_TEMPLATES, IMAGE_MODELS, type ImageTemplateId, type ImageModelId, type ImageSize } from "@/lib/ai/image";
 import { withErrorHandler } from "@/lib/api/withErrorHandler";
 import { z } from "zod/v4";
 
@@ -16,7 +16,7 @@ export const POST = withErrorHandler(
     const body = await req.json();
     const { prompt, aspect, template, model, resolution, customSystemInstruction } = schema.parse(body);
 
-    const result = await generateRecruitImage({
+    const result = await generateImage({
       prompt,
       aspect,
       template: template as ImageTemplateId | undefined,

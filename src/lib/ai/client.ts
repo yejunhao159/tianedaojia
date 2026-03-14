@@ -2,7 +2,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 
 let _client: ReturnType<typeof createAnthropic> | null = null;
 
-export function getAIClient() {
+export function getLLMClient() {
   if (!_client) {
     _client = createAnthropic({
       apiKey: process.env.GEMINI_API_KEY!,
@@ -12,16 +12,14 @@ export function getAIClient() {
   return _client;
 }
 
-export const DEFAULT_MODEL = "claude-sonnet-4-6-thinking";
-
-export type ModelId =
+export type TextModelId =
   | "claude-sonnet-4-6-thinking"
   | "claude-sonnet-4-6"
   | "gemini-2.5-flash"
   | "gemini-2.5-pro";
 
-export interface ModelConfig {
-  id: ModelId;
+export interface TextModelConfig {
+  id: TextModelId;
   name: string;
   description: string;
   maxOutputTokens: number;
@@ -29,7 +27,7 @@ export interface ModelConfig {
   costTier: "low" | "medium" | "high";
 }
 
-export const AVAILABLE_MODELS: ModelConfig[] = [
+export const TEXT_MODELS: TextModelConfig[] = [
   {
     id: "claude-sonnet-4-6-thinking",
     name: "Claude Sonnet 4.6 Thinking",
@@ -64,25 +62,26 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
   },
 ];
 
-export interface GenerationParams {
-  model?: ModelId;
-  temperature?: number;
-  maxOutputTokens?: number;
-  topP?: number;
+export type TaskType = "generate" | "parse" | "match" | "extract";
+
+export interface TaskParams {
+  model: TextModelId;
+  temperature: number;
+  maxOutputTokens: number;
 }
 
-export const DEFAULT_PARAMS: Record<string, GenerationParams> = {
+export const TASK_DEFAULTS: Record<TaskType, TaskParams> = {
   generate: { model: "claude-sonnet-4-6-thinking", temperature: 0.8, maxOutputTokens: 2000 },
-  parse: { model: "claude-sonnet-4-6-thinking", temperature: 0.3, maxOutputTokens: 3000 },
-  match: { model: "claude-sonnet-4-6-thinking", temperature: 0.2, maxOutputTokens: 4000 },
-  extract: { model: "claude-sonnet-4-6-thinking", temperature: 0.1, maxOutputTokens: 2000 },
+  parse:    { model: "claude-sonnet-4-6-thinking", temperature: 0.3, maxOutputTokens: 3000 },
+  match:    { model: "claude-sonnet-4-6-thinking", temperature: 0.2, maxOutputTokens: 4000 },
+  extract:  { model: "claude-sonnet-4-6-thinking", temperature: 0.1, maxOutputTokens: 2000 },
 };
 
-export function getModelForTask(task: keyof typeof DEFAULT_PARAMS, override?: ModelId) {
-  const modelId = override ?? DEFAULT_PARAMS[task].model ?? DEFAULT_MODEL;
-  return getAIClient()(modelId);
+export function getModelForTask(task: TaskType, override?: TextModelId) {
+  const modelId = override ?? TASK_DEFAULTS[task].model;
+  return getLLMClient()(modelId);
 }
 
-export function getParamsForTask(task: keyof typeof DEFAULT_PARAMS) {
-  return DEFAULT_PARAMS[task];
+export function getParamsForTask(task: TaskType): TaskParams {
+  return TASK_DEFAULTS[task];
 }
