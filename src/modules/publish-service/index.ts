@@ -1,9 +1,12 @@
 export { CHANNELS, CHANNEL_LIST, CHANNEL_IDS } from "./channels";
 export { SCENARIOS, TONES } from "./scenarios";
-export { createPublishTask } from "./publisher";
+export {
+  createPublishTask, getTask, getAllTasks, executePublish, batchPublish,
+  registerAdapter, getAdapter,
+} from "./publisher";
 
 export type {
   ChannelId, ChannelConfig, ToneId, ToneConfig,
   ScenarioId, ScenarioConfig,
 } from "./types";
-export type { PublishStatus, PublishTask } from "./publisher";
+export type { PublishStatus, PublishTask, PublishAdapter } from "./publisher";

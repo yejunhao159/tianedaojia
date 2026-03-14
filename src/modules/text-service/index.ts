@@ -1,4 +1,4 @@
-export { getLLMClient, getModelForTask, getParamsForTask, TASK_DEFAULTS } from "./client";
+export { getLLMModel, getModelForTask, getParamsForTask, TASK_DEFAULTS } from "./client";
 export { TEXT_MODELS } from "./models";
 export { streamGenerateContent, streamParseContent, streamMatchContent } from "./streams";
 export { extractRecruitmentInfo, recruitmentSchema } from "./extract";
