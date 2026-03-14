@@ -39,3 +39,28 @@ export async function fetchGenerateImage(opts: {
     return null;
   }
 }
+
+export async function fetchBatchImages(opts: {
+  prompt: string;
+  aspect: string;
+  count?: number;
+  template?: string;
+}): Promise<string[]> {
+  try {
+    const res = await fetch("/api/image/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: opts.prompt,
+        aspect: opts.aspect,
+        count: opts.count ?? 3,
+        template: opts.template,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.images ?? [];
+  } catch {
+    return [];
+  }
+}

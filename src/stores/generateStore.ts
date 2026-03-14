@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import pLimit from "p-limit";
 import { CHANNEL_IDS, CHANNELS } from "@modules/publish-service";
-import { fetchGenerateStream, fetchGenerateImage } from "@/lib/services/generateService";
+import { fetchGenerateStream, fetchBatchImages } from "@/lib/services/generateService";
 import { useHistoryStore } from "./historyStore";
 import type { ChannelId, ScenarioId, ToneId } from "@/types";
 
@@ -14,6 +14,7 @@ interface GenerateState {
   contents: Record<ChannelId, string>;
   statuses: Record<ChannelId, Status>;
   images: Record<ChannelId, string[]>;
+  imageStatuses: Record<ChannelId, Status>;
   isGenerating: boolean;
 
   setRequirement: (v: string) => void;
@@ -27,6 +28,7 @@ const empty = <T,>(val: T) =>
   Object.fromEntries(CHANNEL_IDS.map((id) => [id, val])) as Record<ChannelId, T>;
 
 const textLimit = pLimit(2);
+const imageLimit = pLimit(2);
 
 export const useGenerateStore = create<GenerateState>((set, get) => ({
   requirement: "",
@@ -35,6 +37,7 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
   contents: empty(""),
   statuses: empty<Status>("idle"),
   images: empty<string[]>([]),
+  imageStatuses: empty<Status>("idle"),
   isGenerating: false,
 
   setRequirement: (v) => set({ requirement: v }),
@@ -53,6 +56,7 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       contents: empty(""),
       statuses: empty<Status>("idle"),
       images: empty<string[]>([]),
+      imageStatuses: empty<Status>("idle"),
     });
 
     const textTasks = CHANNEL_IDS.map((ch) =>
@@ -71,13 +75,27 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
       })
     );
 
-    const imageTasks = CHANNEL_IDS.map(async (ch) => {
-      const url = await fetchGenerateImage({
-        prompt: requirement,
-        aspect: CHANNELS[ch].imageAspect,
-      });
-      if (url) set((s) => ({ images: { ...s.images, [ch]: [url] } }));
-    });
+    const minImages = 3;
+    const imageTasks = CHANNEL_IDS.map((ch) =>
+      imageLimit(async () => {
+        set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "generating" } }));
+        try {
+          const count = Math.max(minImages, Math.min(CHANNELS[ch].imageCount, 3));
+          const urls = await fetchBatchImages({
+            prompt: requirement,
+            aspect: CHANNELS[ch].imageAspect,
+            count,
+          });
+          set((s) => ({
+            images: { ...s.images, [ch]: urls },
+            imageStatuses: { ...s.imageStatuses, [ch]: urls.length > 0 ? "done" : "error" },
+          }));
+        } catch (e) {
+          console.error(`[genImage ${ch}]`, e);
+          set((s) => ({ imageStatuses: { ...s.imageStatuses, [ch]: "error" } }));
+        }
+      })
+    );
 
     await Promise.allSettled([...textTasks, ...imageTasks]);
     set({ isGenerating: false });
