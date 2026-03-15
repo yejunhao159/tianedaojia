@@ -1,4 +1,4 @@
-export { runAgent, streamAgent, setModelResolver } from "./agent";
+export { runAgent, streamAgent, setModelResolver, initFromTextService } from "./agent";
 export { runPipeline } from "./pipeline";
 export { AGENTS, CONTENT_GENERATION_PIPELINE } from "./presets";
 export { createSession, getSession, deleteSession, addMessage, getHistory, listSessions } from "./session";

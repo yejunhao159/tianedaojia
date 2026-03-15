@@ -3,57 +3,71 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 import type { TextModelId, TaskType, TaskParams } from "./types";
 
-export type ProviderType = "anthropic" | "openai";
+export type ProviderType = "openai" | "anthropic" | "kimi";
 
 interface ProviderConfig {
   type: ProviderType;
   apiKey: string;
-  baseURL?: string;
+  baseURL: string;
 }
 
 function resolveProviderConfig(): ProviderConfig {
   const providerType = (process.env.LLM_PROVIDER ?? "anthropic") as ProviderType;
+
+  if (providerType === "kimi") {
+    return {
+      type: "kimi",
+      apiKey: process.env.KIMI_API_KEY ?? process.env.LLM_API_KEY!,
+      baseURL: process.env.KIMI_BASE_URL ?? "https://api.moonshot.cn/v1",
+    };
+  }
+
+  if (providerType === "openai") {
+    return {
+      type: "openai",
+      apiKey: process.env.LLM_API_KEY ?? process.env.GEMINI_API_KEY!,
+      baseURL: `${process.env.LLM_BASE_URL ?? process.env.GEMINI_BASE_URL}/v1`,
+    };
+  }
+
   return {
-    type: providerType,
+    type: "anthropic",
     apiKey: process.env.LLM_API_KEY ?? process.env.GEMINI_API_KEY!,
-    baseURL: process.env.LLM_BASE_URL ?? process.env.GEMINI_BASE_URL
-      ? `${process.env.LLM_BASE_URL ?? process.env.GEMINI_BASE_URL}/v1`
-      : undefined,
+    baseURL: `${process.env.LLM_BASE_URL ?? process.env.GEMINI_BASE_URL}/v1`,
   };
 }
 
-type ProviderFactory = (modelId: string) => LanguageModel;
+const KIMI_MODEL = "moonshot-v1-128k";
 
+type ProviderFactory = (modelId: string) => LanguageModel;
 let _provider: ProviderFactory | null = null;
+let _providerType: ProviderType | null = null;
 
 function getProvider(): ProviderFactory {
   if (!_provider) {
     const config = resolveProviderConfig();
-    switch (config.type) {
-      case "openai": {
-        const client = createOpenAI({
-          apiKey: config.apiKey,
-          baseURL: config.baseURL,
-        });
-        _provider = (modelId: string) => client(modelId);
-        break;
-      }
-      case "anthropic":
-      default: {
-        const client = createAnthropic({
-          apiKey: config.apiKey,
-          baseURL: config.baseURL,
-        });
-        _provider = (modelId: string) => client(modelId);
-        break;
-      }
+    _providerType = config.type;
+    if (config.type === "kimi" || config.type === "openai") {
+      const client = createOpenAI({
+        apiKey: config.apiKey,
+        baseURL: config.baseURL,
+        ...({ compatibility: "compatible" } as Record<string, unknown>),
+      });
+      _provider = (modelId: string) => client.chat(modelId);
+    } else {
+      const client = createAnthropic({ apiKey: config.apiKey, baseURL: config.baseURL });
+      _provider = (modelId: string) => client(modelId);
     }
   }
   return _provider;
 }
 
 export function getLLMModel(modelId: string): LanguageModel {
-  return getProvider()(modelId);
+  const provider = getProvider();
+  if (_providerType === "kimi") {
+    return provider(KIMI_MODEL);
+  }
+  return provider(modelId);
 }
 
 export const TASK_DEFAULTS: Record<TaskType, TaskParams> = {

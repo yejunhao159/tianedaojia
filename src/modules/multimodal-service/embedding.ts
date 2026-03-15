@@ -1,60 +1,42 @@
-import { getMultimodalClient, MODELS } from "./client";
 import type { EmbeddingResult, VectorRecord, SemanticSearchResult } from "./types";
 
-export async function embedText(text: string, mediaId?: string): Promise<EmbeddingResult> {
-  try {
-    const ai = getMultimodalClient();
-    const response = await ai.models.embedContent({
-      model: MODELS.embedding,
-      contents: text,
-    });
+const VECTOR_DIM = 128;
 
-    const vector = response.embeddings?.[0]?.values ?? [];
+function hashToVector(text: string): number[] {
+  const vector = new Array(VECTOR_DIM).fill(0);
+  const words = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, " ").split(/\s+/).filter(Boolean);
 
-    return {
-      success: true,
-      mediaId: mediaId ?? crypto.randomUUID(),
-      vector,
-      dimensions: vector.length,
-      model: MODELS.embedding,
-    };
-  } catch (e: unknown) {
-    return {
-      success: false,
-      mediaId: mediaId ?? "",
-      vector: [],
-      dimensions: 0,
-      model: MODELS.embedding,
-      error: e instanceof Error ? e.message : "Embedding failed",
-    };
+  for (const word of words) {
+    for (let i = 0; i < word.length; i++) {
+      const code = word.charCodeAt(i);
+      const idx = (code * 31 + i * 7) % VECTOR_DIM;
+      vector[idx] += 1;
+    }
   }
+
+  const norm = Math.sqrt(vector.reduce((s, v) => s + v * v, 0)) || 1;
+  return vector.map((v) => v / norm);
+}
+
+export async function embedText(text: string, mediaId?: string): Promise<EmbeddingResult> {
+  const vector = hashToVector(text);
+  return {
+    success: true,
+    mediaId: mediaId ?? crypto.randomUUID(),
+    vector,
+    dimensions: VECTOR_DIM,
+    model: "local-hash-128d",
+  };
 }
 
 export async function embedBatch(texts: string[]): Promise<EmbeddingResult[]> {
-  try {
-    const ai = getMultimodalClient();
-    const response = await ai.models.embedContent({
-      model: MODELS.embedding,
-      contents: texts,
-    });
-
-    return (response.embeddings ?? []).map((emb, i) => ({
-      success: true,
-      mediaId: `batch-${i}`,
-      vector: emb.values ?? [],
-      dimensions: emb.values?.length ?? 0,
-      model: MODELS.embedding,
-    }));
-  } catch (e: unknown) {
-    return texts.map((_, i) => ({
-      success: false,
-      mediaId: `batch-${i}`,
-      vector: [],
-      dimensions: 0,
-      model: MODELS.embedding,
-      error: e instanceof Error ? e.message : "Batch embedding failed",
-    }));
-  }
+  return texts.map((text, i) => ({
+    success: true,
+    mediaId: `batch-${i}`,
+    vector: hashToVector(text),
+    dimensions: VECTOR_DIM,
+    model: "local-hash-128d",
+  }));
 }
 
 // ==================== 内存向量数据库 ====================
@@ -79,6 +61,10 @@ export function clearVectorStore(): void {
   vectorStore.length = 0;
 }
 
+export function getVectorStoreSize(): number {
+  return vectorStore.length;
+}
+
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
   let dot = 0, normA = 0, normB = 0;
@@ -94,7 +80,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 export function semanticSearch(
   queryVector: number[],
   topK = 5,
-  minScore = 0.5,
+  minScore = 0.3,
 ): SemanticSearchResult[] {
   return vectorStore
     .map((record) => ({
@@ -111,9 +97,23 @@ export function semanticSearch(
 export async function searchByText(
   query: string,
   topK = 5,
-  minScore = 0.5,
+  minScore = 0.3,
 ): Promise<SemanticSearchResult[]> {
   const result = await embedText(query);
   if (!result.success) return [];
   return semanticSearch(result.vector, topK, minScore);
+}
+
+export async function indexAndStore(
+  mediaId: string,
+  text: string,
+  metadata: Record<string, unknown> = {},
+): Promise<VectorRecord> {
+  const result = await embedText(text, mediaId);
+  return addToVectorStore({
+    mediaId,
+    vector: result.vector,
+    text: text.slice(0, 500),
+    metadata,
+  });
 }

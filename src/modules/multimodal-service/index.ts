@@ -4,8 +4,8 @@ export { detectMediaType, validateFile, createMediaFile, fileToBase64 } from "./
 
 export {
   embedText, embedBatch,
-  addToVectorStore, getVectorStore, clearVectorStore,
-  semanticSearch, searchByText,
+  addToVectorStore, getVectorStore, clearVectorStore, getVectorStoreSize,
+  semanticSearch, searchByText, indexAndStore,
 } from "./embedding";
 
 export { extractFromMedia, extractAndEmbed } from "./extract";
